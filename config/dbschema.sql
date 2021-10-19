@@ -1,0 +1,149 @@
+DROP TABLE IF EXISTS accounts;
+CREATE TABLE accounts(
+	org_id INT NULL,
+	space_id INT NOT NULL PRIMARY KEY,
+	account_name VARCHAR(100) NULL,
+	created_on TIMESTAMP(0) NULL,
+	is_disabled boolean NULL
+);
+
+
+
+DROP TABLE IF EXISTS routes;
+CREATE TABLE routes(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	depot VARCHAR(100) NULL,
+	name VARCHAR(100) NULL,
+	description VARCHAR(500) NULL,
+	status VARCHAR(20) NULL,
+	created_on TIMESTAMP(0) NULL,
+	created_by VARCHAR(100) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL,
+	services TEXT NULL,
+	route_group_id UUID NULL
+);
+
+
+DROP TABLE IF EXISTS patterns;
+CREATE TABLE patterns(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	route_id UUID NULL,
+	name VARCHAR(100) NULL,
+	description VARCHAR(500) NULL,
+	is_disabled BOOLEAN NULL,
+	headway_secs INT NULL,
+	first_trip_start TIME(0) NULL,
+	end_time TIME(0) NULL,
+	created_on TIMESTAMP(0) NULL,
+	created_by VARCHAR(100) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL
+);
+
+
+DROP TABLE IF EXISTS pattern_stops;
+CREATE TABLE pattern_stops(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	pattern_id UUID NULL,
+	stop_id UUID NULL,
+	stop_sequence SMALLINT NULL,
+	time_offset INT NULL
+);
+
+
+
+DROP TABLE IF EXISTS trips;
+CREATE TABLE trips(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	pattern_id UUID NULL,
+	name VARCHAR(100) NULL,
+	start_time TIME(0) NULL,
+	end_time TIME(0) NULL,
+	days VARCHAR(100) NULL,
+	service_id UUID NULL
+);
+
+
+DROP TABLE IF EXISTS stop_times;
+CREATE TABLE stop_times(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	trip_id VARCHAR(100) NULL,
+	stop_sequence SMALLINT NULL,
+	arrival_time TIME(0) NULL,
+	departure_time TIME(0) NULL,
+	timepoint BOOLEAN NULL
+);
+
+
+DROP TABLE IF EXISTS services;
+CREATE TABLE services(
+	space_id INT,
+	id UUID NOT NULL PRIMARY KEY,
+	name VARCHAR(100),
+	depot VARCHAR(100) NULL
+);
+
+
+DROP TABLE IF EXISTS stops_master;
+CREATE TABLE stops_master(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	name VARCHAR(100) NULL,
+	description VARCHAR(500) NULL,
+	latltude DECIMAL(11,8) NULL,
+	longitude DECIMAL(11,8) NULL,
+	geopoint GEOGRAPHY(POINT) NULL,
+	stop_group_id UUID NULL,
+	is_disabled BOOLEAN NULL,
+	created_on TIMESTAMP(0) NULL,
+	created_by VARCHAR(100) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL
+);
+
+
+DROP TABLE IF EXISTS stop_groups;
+CREATE TABLE stop_groups(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	stop_group_name VARCHAR(100) NULL,
+	description VARCHAR(500) NULL,
+	created_on TIMESTAMP(0) NULL,
+	created_by VARCHAR(100) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL
+);
+
+
+
+DROP TABLE IF EXISTS route_groups;
+CREATE TABLE route_groups(
+	space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	route_group_name VARCHAR(100) NULL,
+	description VARCHAR(500) NULL,
+	created_on TIMESTAMP(0) NULL,
+	created_by VARCHAR(100) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL
+);
+
+
+DROP TABLE IF EXISTS config;
+CREATE TABLE config(
+space_id INT NULL,
+	id UUID NOT NULL PRIMARY KEY,
+	config_key VARCHAR(100) NULL,
+	config_value VARCHAR(100) NULL,
+	created_on TIMESTAMP(0) NULL,
+	created_by VARCHAR(100) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL
+);
+

@@ -9,7 +9,16 @@ import pandas as pd
 # Postgresql multi-threaded connection pool.
 # From https://pynative.com/psycopg2-python-postgresql-connection-pooling/#h-create-a-threaded-postgresql-connection-pool-in-python
 
-dbcreds = json.load(open('credentials.json','r'))
+dbcreds = {
+    'host': os.environ.get('DB_SERVER',''),
+    'port': os.environ.get('DB_PORT',''),
+    'dbname': os.environ.get('DB_DBNAME',''),
+    'user': os.environ.get('DB_USER',''),
+    'password': os.environ.get('DB_PW','')
+}
+
+assert len(dbcreds['password']) > 2, "Invalid DB connection password" 
+
 threaded_postgreSQL_pool = psycopg2.pool.ThreadedConnectionPool(5, 20, user=dbcreds['user'],
     password=dbcreds['password'], host=dbcreds['host'], port=dbcreds['port'], database=dbcreds['dbname'])
 
