@@ -3,7 +3,7 @@ from typing import Optional
 from payanam_launch import app
 
 
-@app.get("/")
+@app.get("/hello")
 async def read_root():
     return {"Hello": "World"}
 

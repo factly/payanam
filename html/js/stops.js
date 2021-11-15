@@ -120,9 +120,9 @@ var hash = new L.Hash(map);
 // RUN ON PAGE LOAD
 
 $(document).ready(function() {
-    loadDefaults();
+    loadConfig();
     // load depots
-	loadDepots();
+	// loadDepots();
 	loadStops();
 	setTimeout(function () {
 		sidebar.open('home');

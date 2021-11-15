@@ -1,10 +1,10 @@
 # dbonnect.py
 
 import psycopg2, json, sys, os, time, datetime
-from psycopg2 import pool
+from psycopg2 import pool, IntegrityError, extras
 import pandas as pd
 
-# import commonfuncs as cf
+import commonfuncs as cf
 
 # Postgresql multi-threaded connection pool.
 # From https://pynative.com/psycopg2-python-postgresql-connection-pooling/#h-create-a-threaded-postgresql-connection-pool-in-python
@@ -24,6 +24,8 @@ threaded_postgreSQL_pool = psycopg2.pool.ThreadedConnectionPool(5, 20, user=dbcr
 
 assert threaded_postgreSQL_pool, "Could not create DB connection"
 
+cf.logmessage("DB Connected")
+
 def makeQuery(s1, output='df', lowerCaseColumns=True, keepCols=False, fillna=True, engine=None, noprint=False):
     '''
     output choices:
@@ -35,19 +37,19 @@ def makeQuery(s1, output='df', lowerCaseColumns=True, keepCols=False, fillna=Tru
     oneJson: First row, as dict
     '''
     if not isinstance(s1,str):
-        print("query needs to be a string")
+        cf.logmessage("query needs to be a string")
         return False
     if ';' in s1:
-        print("; not allowed")
+        cf.logmessage("; not allowed")
         return False
 
     if not noprint:
         # keeping auth check and some other queries out
         skipPrint = ['where token=', '.STArea()', 'STGeomFromText']
         if not any([(x in s1) for x in skipPrint]) : 
-            print(f"Query: {' '.join(s1.split())}")
+            cf.logmessage(f"Query: {' '.join(s1.split())}")
         else: 
-            print(f"Query: {' '.join(s1.split())[:20]}")
+            cf.logmessage(f"Query: {' '.join(s1.split())[:20]}")
 
     ps_connection = threaded_postgreSQL_pool.getconn()
 
@@ -88,7 +90,7 @@ def makeQuery(s1, output='df', lowerCaseColumns=True, keepCols=False, fillna=Tru
             # default - df
             result = df
     else:
-        print('invalid output type')
+        cf.logmessage('invalid output type')
     
     threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
     return result
@@ -103,3 +105,78 @@ def execSQL(s1):
     ps_cursor.close()
     threaded_postgreSQL_pool.putconn(ps_connection)
     return affected
+
+
+def getColumnsList(tablename, engine):
+    statement1 = f"""
+    SELECT COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = N'{tablename}'
+    """
+    # sql = db.text(statement1)
+    df = pd.read_sql_query(statement1,con=engine)
+    # return df['COLUMN_NAME'].str.lower().to_list()
+    return df['column_name'].to_list()
+
+
+def addRow(params,tablename):
+    df = pd.DataFrame([params]) 
+    return addTable(df, tablename) # heck
+
+
+def OLD_addTable(df, tablename, lowerCaseColumns=False):
+    ps_connection = threaded_postgreSQL_pool.getconn()
+
+    table_cols = getColumnsList(tablename,ps_connection)
+    if lowerCaseColumns:
+        df.columns = [x.lower() for x in df.columns] # make lowercase
+    sending_cols = [x for x in table_cols if x in df.columns]
+    discarded_cols = set(df.columns.to_list()) - set(table_cols)
+    if len(discarded_cols): cf.logmessage("Dropping {} cols from uploaded data as they're not in the DB: {}".format(len(discarded_cols),', '.join(discarded_cols)))
+    
+    # ensure only those values go to DB table that have columns there
+    # cf.logmessage("Adding {} rows into {} with these columns: {}".format(len(df), tablename, sending_cols))
+    CHUNKSIZE = int(os.environ.get('CHUNKSIZE',1))
+    try:
+        df[sending_cols].to_sql(name=tablename, con=ps_connection, chunksize=CHUNKSIZE, if_exists='append', index=False )
+        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+
+    except IntegrityError as e:
+        cf.logmessage(e)
+        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+        return False
+    except:
+        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+        raise
+        return False
+
+    return True
+
+
+
+def addTable(df, table):
+    """
+    From https://naysan.ca/2020/05/09/pandas-to-postgresql-using-psycopg2-bulk-insert-performance-benchmark/
+    Using psycopg2.extras.execute_values() to insert the dataframe
+    """
+    # Create a list of tupples from the dataframe values
+    tuples = [tuple(x) for x in df.to_numpy()]
+    # Comma-separated dataframe columns
+    cols = ','.join(list(df.columns))
+    # SQL query to execute
+    query  = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
+
+    ps_connection = threaded_postgreSQL_pool.getconn()
+    cursor = ps_connection.cursor()
+    try:
+        extras.execute_values(cursor, query, tuples)
+        ps_connection.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        cf.logmessage("Error: %s" % error)
+        ps_connection.rollback()
+        cursor.close()
+        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+        return False
+    cursor.close()
+    threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+    return True

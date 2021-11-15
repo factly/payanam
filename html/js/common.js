@@ -1,5 +1,26 @@
 // common.js
 
+/* template for API calls
+
+var payload = {"description": "hello" };
+$.ajax({
+    url : `${APIpath}/getData1`,
+    type : 'POST',
+    data : JSON.stringify(payload),
+    cache: false,
+    contentType: 'application/json',
+    // dataType : 'html',
+    success : function(returndata) {
+        processData(returndata.data);
+    },
+    error: function(jqXHR, exception) {
+        console.log('error:',jqXHR.responseText);
+        alert(jqXHR.responseText);
+    }
+});
+*/
+
+
 // CONSTANTS
 const APIpath = 'API/';
 const STARTLOCATION = [17.390491,78.484102]; //Hyderabad
@@ -374,7 +395,25 @@ function loadDefaults(callbackFlag=false, callbackFunc=null) {
 }
 
 
-
+function loadConfig() {
+    var payload = {};
+    $.ajax({
+        url : `${APIpath}loadConfig`,
+        type : 'POST',
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success : function(returndata) {
+            console.log(returndata);
+            
+            //processData(returndata.data);
+        },
+        error: function(jqXHR, exception) {
+            console.log('error:',jqXHR.responseText);
+            alert(jqXHR.responseText);
+        }
+    });
+}
 
 // #########################
 // GRAYEYARD

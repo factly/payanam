@@ -96,7 +96,7 @@ CREATE TABLE stops_master(
 	id UUID NOT NULL PRIMARY KEY,
 	name VARCHAR(100) NULL,
 	description VARCHAR(500) NULL,
-	latltude DECIMAL(11,8) NULL,
+	latitude DECIMAL(11,8) NULL,
 	longitude DECIMAL(11,8) NULL,
 	geopoint GEOGRAPHY(POINT) NULL,
 	stop_group_id UUID NULL,
@@ -104,7 +104,8 @@ CREATE TABLE stops_master(
 	created_on TIMESTAMP(0) NULL,
 	created_by VARCHAR(100) NULL,
 	last_updated TIMESTAMP(0) NULL,
-	modified_by VARCHAR(100) NULL
+	modified_by VARCHAR(100) NULL,
+	CONSTRAINT stops_master_c1 UNIQUE (latitude, longitude)
 );
 
 
