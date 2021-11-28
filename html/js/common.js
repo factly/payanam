@@ -176,6 +176,8 @@ function getCookie(cname) {
 }
 
 function checkCookie(change=false) {
+    $('#keyStatus').html(`Bypass login`);
+    return;
     globalApiKey = getCookie("apikey");
 
     if(change) globalApiKey = prompt("Please enter your API Key, or put in 'guest':");

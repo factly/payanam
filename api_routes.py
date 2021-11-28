@@ -29,3 +29,8 @@ def loadRoutes(req: loadRoutes_payload):
     
     return returnD
 
+
+##########
+
+class addRoute_payload(BaseModel):
+    name: Optional[str] = None

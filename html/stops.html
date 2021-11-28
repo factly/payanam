@@ -1,164 +1,151 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>All Stops - Payanam</title>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<title>Stops Mapping</title>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
-<link rel="stylesheet" href="lib/leaflet.css" />
+<link href="lib/leaflet.css" orig="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" rel="stylesheet">
 <link href="lib/jquery-ui.css" rel="stylesheet">
-<link href="lib/bootstrap.v4.0.0.min.css" crossorigin="anonymous" alt="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" rel="stylesheet">
-<link rel="stylesheet" href="lib/leaflet-sidebar.css" />
 <link href="lib/tabulator.min.css" rel="stylesheet">
-<link href="js/style.css" rel="stylesheet">
+<link href="lib/bootstrap.v4.0.0.min.css" crossorigin="anonymous" alt="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" rel="stylesheet">
+<link rel="stylesheet" href="lib/easy-button.css" alt="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+<link rel="stylesheet" href="lib/chosen/chosen.min.css">
+<link href='lib/leaflet.fullscreen.css' alt='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+
+<!-- <link href="js/style.css" rel="stylesheet"> -->
 
 <!-- Put the CSSs first and JSs next -->
 
 <script src="lib/jquery-3.3.1.min.js" type="text/javascript"></script>
 <script src="lib/jquery-ui.min.js" type="text/javascript"></script>
 <script src="lib/leaflet.js"></script>
-<script src="lib/leaflet-sidebar.min.js"></script>
-<script src="lib/papaparse.min.js"></script>
+<script src="lib/easy-button.js" alt="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+<script src="lib/tabulator.min.js" type="text/javascript"></script>
+<script src="lib/popper.v1.12.9.min.js" crossorigin="anonymous" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" alt="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+<script src="lib/bootstrap.v4.0.0.min.js" crossorigin="anonymous" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" alt="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="lib/papaparse.min.js" type="text/javascript"></script>
+<script src="lib/leaflet-ant-path.js"></script>
+<script src="lib/chosen/chosen.jquery.min.js" type="text/javascript"></script>
+<script src='lib/Leaflet.fullscreen.min.js' alt='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
 <script src="lib/Leaflet.Control.Custom.js"></script>
 <script src="lib/leaflet-providers.js"></script>
-<script src="lib/tabulator.min.js" type="text/javascript"></script>
 <script src="lib/leaflet-hash.min.js"></script>
-
 <style>
 body {
-    padding: 0;
-    margin: 0;
-    min-height: auto; /* override style.css for this page*/
-}
-
-html, body, #map {
-    height: 100%;
+    font-size: 0.85em;
 }
 #map {
-    height: calc(100% - 56px);
-    /*font: 10pt "Helvetica Neue", Arial, Helvetica, sans-serif;*/
-
-}
-ul.sim-tree {
-    padding-inline-start: 10px;
-}
-div.sidebar {
-    top: 63px;
+height: 85vh;
+width: 100%;
 }
 
-@media (min-width: 1200px) {
-    /*.sidebar {
-        width: 360px;
-    }*/
-    .sidebar p {
-        width: 95%;
-    }
-    /*
-    .sidebar-left ~ .sidebar-map .leaflet-left {
-        left: 370px;
-    }
-    */
+/* MAP */
+
+#mapContainer {
+    position: relative;
 }
 
-.sidebar .alert {
+input[type=checkbox] {
+ width: 15px; height: 15px;
+ /*-webkit-border-radius: 22px; -moz-border-radius: 22px; border-radius: 22px;*/
+  border: 1px solid #000;
+  vertical-align: middle; 
+}
+
+textarea {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 80%;
+}
+
+.divOnMap2 {
+    padding: 2px;
+    background: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+    border: 1px solid #000;
+    -webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+}
+
+.scrollbox {
+    overflow:auto;
+    max-height: 250px;
     width: 90%;
+    background: rgba(255, 240, 28, 0.2);
+    padding: 10px 20px;
 }
-.sidebar-pane {
-    padding-top: 10px;
-    padding-right: 20px;
-    padding-bottom: 10px;
-    padding-left: 10px;
-}
-/*
-div.sidebar-tabs {
-    left: -2px!important;
-    width: calc(100% + 10px);
-    
-}
-.sidebar {
-    background-color: white;
-}
-*/
 
-/* Tabulator */
-#stops {
+.divOnMap_right {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.6);
+    /*font-size: 14px;*/
+    border-radius: 5px;
+    box-shadow:0px 0px 5px black; 
+    height: 100px;
+    width: 200px;
+}
+
+.divOnMap_left {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.6);
+    /*font-size: 14px;*/
+    border-radius: 5px;
+    box-shadow:0px 0px 5px black; 
+    min-height: 100px;
+    max-height: 300px;
+    width: 270px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+#stopsTable {
     width: 100%;
 }
+
+.tabulator {
+    font-size: 0.8em;
+}
+
+#new_stop_name {
+    font-size: 1.5em;
+    width: 100%;
+
+}
+#manual_stop_id{
+    font-size: 1.3em;
+    font-weight: bold;
+}
 </style>
+
 </head>
 <body>
 <div id="topMenu"></div>
 
-<div id="sidebar" class="sidebar collapsed">
-<!-- Nav tabs -->
-<div class="sidebar-tabs">
-<ul role="tablist">
-    <li><a href="#home" role="tab" onclick="tabulatorRedraw()"><i class="fa fa-bars"></i></a></li>
-    <!--
-    <li><a href="#stopDetailsSection" role="tab"><i class="fa fa-map-marker"></i></a></li>
-    <li class="disabled"><a href="#messages" role="tab"><i class="fa fa-envelope"></i></a></li>
-    <li><a href="https://github.com/Turbo87/sidebar-v2" role="tab" target="_blank"><i class="fa fa-github"></i></a></li>
-    -->
-</ul>
-<ul role="tablist">
-    <li><a href="#settings" role="tab"><i class="fa fa-info-circle"></i></a></li>
-</ul>
+<div class="container-fluid">
+<div class="row">
+<div class="col-md-4">
+    <p><button onclick="unmapped()">Toggle unmapped stops</button> | <span id="stopsTable_status">Loading..</span></p>
+    <div id="stopsTable"></div>
+    <!-- <button onclick="loadRoutes()">Load routes for selected stop</button>  -->
 </div>
 
-<!-- Tab panes -->
-<div class="sidebar-content">
-<div class="sidebar-pane" id="home">
-    <h1 class="sidebar-header">
-        Stops List
-        <span class="sidebar-close"><i class="fa fa-caret-left"></i></span>
-    </h1>
-    <br>
-    <div id="stopDetails"></div>
-    <div id="stops"></div>
-    <!--
-    <br>
-    <p id="status" class="alert alert-primary">Loading, please wait..</p>
-    <p class="alert alert-warning"> <small></small></p>
-    -->
+<div class="col-md-8">
+    <div id="mapContainer">
+    <div id="map"></div>
+    </div>
     
+    <p>Add stop at current location:
+        <span class="position"></span>
+        <!-- <input id="manual_stop_id" placeholder="stop_id" size=5 style="text-transform: uppercase"> -->
+        <input id="manual_stop_name" placeholder="stop_name" size=10>
+        <input id="manual_description" placeholder="description" size=10>
+        <button onclick="addStop()">Add</button><br>
+        <span id="addStop_status"></span>
+    </p>
 </div>
-<!--
-<div class="sidebar-pane" id="stopDetailsSection">
-<h2 class="sidebar-header"><span class="stop_name">Stop Name</span>
-<span class="sidebar-close"><i class="fa fa-caret-left"></i></span></h2>
-<br>
 </div>
--->
-<!--
-<div class="sidebar-pane" id="messages">
-    <h1 class="sidebar-header">Messages<span class="sidebar-close"><i class="fa fa-caret-left"></i></span></h1>
-</div>
--->
-<div class="sidebar-pane" id="settings">
-<h1 class="sidebar-header">About<span class="sidebar-close"><i class="fa fa-caret-left"></i></span></h1>
-<br>
-<p>Each dot on the map represents a stop by unique lat-long location.<br>
-Use the table in the main tab of this pane (click burger icon on top left) to search and filter down to a stop you're looking for. To see all stops again, erase the filter and press Enter.
-</p>
-<h4>Size Explanation</h4>
-<p>
-The size of the bus stop's dot is representative of the number of routes served by this stop.</p>
-<p>Formula used: <br>
-Radius = 3 + 1.5 * Log(<i>Number of routes</i>)<br><br>
-<small>Since routes number varies widely from 1 to 100s, a log scale was used to prevent the heavies from occupying the whole screen. Therefore, 5 and 10 shows more difference than 100 and 200.</small>
-
-</p>
+<!-- <div id="dump">Route Sequence</div> -->
 
 </div>
-
-</div>
-</div>
-
-<div id="map" class="sidebar-map"></div>
-
 <script src="js/common.js"></script>
 <script src="js/stops.js"></script>
-
 </body>
 </html>

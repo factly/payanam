@@ -26,7 +26,7 @@ assert threaded_postgreSQL_pool, "Could not create DB connection"
 
 cf.logmessage("DB Connected")
 
-def makeQuery(s1, output='df', lowerCaseColumns=True, keepCols=False, fillna=True, engine=None, noprint=False):
+def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=True, engine=None, noprint=False):
     '''
     output choices:
     oneValue : ex: select count(*) from table1 (output will be only one value)
@@ -97,11 +97,13 @@ def makeQuery(s1, output='df', lowerCaseColumns=True, keepCols=False, fillna=Tru
 
 
 def execSQL(s1):
+    cf.logmessage(s1)
     ps_connection = threaded_postgreSQL_pool.getconn()
     ps_cursor = ps_connection.cursor()
     ps_cursor.execute(s1)
+    ps_connection.commit()
+
     affected = ps_cursor.rowcount
-    
     ps_cursor.close()
     threaded_postgreSQL_pool.putconn(ps_connection)
     return affected
@@ -165,7 +167,7 @@ def addTable(df, table):
     cols = ','.join(list(df.columns))
     # SQL query to execute
     query  = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
-
+    print(query)
     ps_connection = threaded_postgreSQL_pool.getconn()
     cursor = ps_connection.cursor()
     try:

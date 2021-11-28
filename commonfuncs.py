@@ -1,5 +1,5 @@
 #commonfuncs.py
-import json, os, time, datetime, uuid
+import json, os, time, datetime, secrets # uuid
 import pandas as pd
 
 root = os.path.dirname(__file__)
@@ -77,11 +77,15 @@ def parseParams(url):
     return parse_qs(parsed.query)
 
 
-def makeUID(nobreaks=False):
-    if nobreaks:
-        return uuid.uuid4().hex
-    else:
-        return str(uuid.uuid4())
+# def makeUID(nobreaks=False):
+#     if nobreaks:
+#         return uuid.uuid4().hex
+#     else:
+#         return str(uuid.uuid4())
+
+def makeUID(length=4):
+    return secrets.token_urlsafe(length).upper()
+
 
 def getDate(timeOffset=5.5, daysOffset=0, returnObj=False):
     d = datetime.datetime.utcnow().replace(microsecond=0) + datetime.timedelta(hours=timeOffset) + datetime.timedelta(days=daysOffset)
@@ -92,3 +96,7 @@ def getTime(timeOffset=5.5, secsOffset=0, returnObj=False):
     d = datetime.datetime.utcnow().replace(microsecond=0) + datetime.timedelta(hours=timeOffset) + datetime.timedelta(seconds=secsOffset)
     if returnObj: return d
     return d.strftime('%Y-%m-%d %H:%M:%S')
+
+def assignUID(df, col='id', length=4):
+    ids = [makeUID(length) for x in range(len(df))]
+    return pd.Series(ids)

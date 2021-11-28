@@ -13,12 +13,12 @@ import dbconnect
 
 ##########
 
-class loadconfig_payload(BaseModel):
+class loadConfig_payload(BaseModel):
     key: Optional[str] = None
     value: Optional[str] = None
 
 @app.post("/API/loadConfig") 
-def loadconfig(req: loadconfig_payload):
+def loadconfig(req: loadConfig_payload):
     cf.logmessage("loadConfig api call")
     s1 = f"select config_key, config_value from config"
     df = dbconnect.makeQuery(s1, output='df')
@@ -29,3 +29,12 @@ def loadconfig(req: loadconfig_payload):
         returnD['config'] = []
     
     return returnD
+
+
+class saveConfig_payload(BaseModel):
+    key: Optional[str] = None
+    value: Optional[str] = None
+
+@app.post("/API/saveConfig") 
+def saveConfig(req: saveConfig_payload):
+    cf.logmessage("saveConfig api call")
