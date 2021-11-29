@@ -78,6 +78,8 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
         
         if (output=='df') and (not len(df)) and (not keepCols):
             result = []
+        elif (output=='df') and (not len(df)) and (keepCols):
+            result = df
         elif (not len(df)): 
             result = []
         elif output == 'column':

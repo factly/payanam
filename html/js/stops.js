@@ -92,10 +92,10 @@ L.easyButton('<img src="lib/zoom-out.svg" width="100%" title="zoom to see all st
     map.fitBounds(stopsLayer.getBounds(), {padding:[20,20], maxZoom:15});
 }).addTo(map);
 
-L.easyButton('<img src="lib/route.svg" width="100%" title="toggle route lines" data-toggle="tooltip" data-placement="right">', 
-    function(btn, map){
-    // routeLines();
-}).addTo(map);
+// L.easyButton('<img src="lib/route.svg" width="100%" title="toggle route lines" data-toggle="tooltip" data-placement="right">', 
+//     function(btn, map){
+//     // routeLines();
+// }).addTo(map);
 
 // https://github.com/Leaflet/Leaflet.fullscreen
 map.addControl(new L.Control.Fullscreen({position:'topright'}));
@@ -199,9 +199,9 @@ function mapStops(data) {
 
         let tooltipContent = `${e.id}: ${e.name}`;
         let popupContent = `${e.id}: ${e.name}<br>
-            <button onclick="locateStop('${e.id}')">Locate in table</button> 
-            <button onclick="loadRoutes('${e.id}')">load routes</button>
+            <button onclick="locateStop('${e.id}')">Locate in table</button>
         `;
+        // <button onclick="loadRoutes('${e.id}')">load routes</button>
 
         allStops[e.id] = L.circleMarker([lat,lon], circleMarkerOptions)
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})

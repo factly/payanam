@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<title>Routes</title>
+
+<link href="lib/leaflet.css" orig="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" rel="stylesheet">
+<link href="lib/jquery-ui.css" rel="stylesheet">
+<link href="lib/tabulator.min.css" rel="stylesheet">
+<link href="lib/bootstrap.v4.0.0.min.css" crossorigin="anonymous" alt="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" rel="stylesheet">
+<link rel="stylesheet" href="lib/easy-button.css" alt="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+<link rel="stylesheet" href="lib/chosen/chosen.min.css">
+<link href='lib/leaflet.fullscreen.css' alt='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<!-- <link href="js/style.css" rel="stylesheet"> -->
+
+<!-- Put the CSSs first and JSs next -->
+
+<script src="lib/jquery-3.3.1.min.js" type="text/javascript"></script>
+<script src="lib/jquery-ui.min.js" type="text/javascript"></script>
+<script src="lib/leaflet.js"></script>
+<script src="lib/easy-button.js" alt="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+<script src="lib/tabulator.min.js" type="text/javascript"></script>
+<script src="lib/popper.v1.12.9.min.js" crossorigin="anonymous" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" alt="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+<script src="lib/bootstrap.v4.0.0.min.js" crossorigin="anonymous" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" alt="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="lib/papaparse.min.js" type="text/javascript"></script>
+<script src="lib/leaflet-ant-path.js"></script>
+<script src="lib/chosen/chosen.jquery.min.js" type="text/javascript"></script>
+<script src='lib/Leaflet.fullscreen.min.js' alt='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+<script src="lib/Leaflet.Control.Custom.js"></script>
+<script src="lib/leaflet-providers.js"></script>
+<script src="lib/leaflet-hash.min.js"></script>
+
+<!-- Select2 - https://select2.org/getting-started/installation -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- jsDelivr :: Sortable :: Latest (https://www.jsdelivr.com/package/npm/sortablejs) -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<style>
+body {
+    font-size: 0.85em;
+}
+#map {
+height: 85vh;
+width: 100%;
+}
+
+/* sortableJS https://sortablejs.github.io/Sortable/#simple-list */
+.sortable-ghost {
+    background-color: #C8EBFB;
+}
+
+</style>
+</head>
+<body>
+<div id="topMenu"></div>
+
+<div class="container-fluid">
+    <br>
+<div class="row">
+    <div class="col-md-4">
+        <h4>Routes</h4>
+        <p>Select a route: <select id="routes_list"></select></p>
+        <p>OR Create one: <input id="new_route_name" placeholder="route name"><button onclick="createRoute()" class="btn btn-sm btn-primary">Create</button> &nbsp; <span id="createRoute_status"></span></p>
+        <p>Description: <input id="route_description"></p>
+        <p>Depot: <input id="route_depot"></p>
+    </div>
+    <div class="col-md-4">
+        <h4>Patterns</h4>
+        <p>Active Pattern: <select id="pattern_chosen">
+            <option value="P1">P1</option>
+        </select></p>
+        <p>Delete this pattern <span class="pattern_selected"></span> <button class="btn btn-sm btn-danger">Delete</button></p>
+        <p>Add Pattern: <input id="pattern_add"></p>
+    </div>
+    <div class="col-md-4">
+        <p>Patterns Order:</p>
+        <!-- <div id="pattern_sequence">
+            <ol id="pattern_sortable" class="sortable">
+                <li class="ui-state-default" id="p1">P1</li>
+                <li class="ui-state-default" id="p2">P2</li>
+            </ol>
+        </div> -->
+        <div id="patterns_order_holder" class="list-group col">
+            <div class="list-group-item" id="P1">P1</div>
+            <div class="list-group-item" id="P2">P2</div>
+            <div class="list-group-item" id="P3">P3</div>
+        </div>
+    </div>
+</div>
+<br>
+<div class="row">
+    <div class="col-md-3">
+        <h4>Stops in pattern: <span class="pattern_selected"></span></h4>
+    </div>
+    <div class="col-md-9">
+        Copy from other pattern: <select id="pattern_copy">
+            <option value="">Choose</option>
+        </select> | <a href="#" id="pattern_reverse">Reverse this pattern</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div id="stops_order_holder" class="list-group col">
+            <div class="list-group-item" id="STOP1">STOP1</div>
+            <div class="list-group-item" id="STOP2">STOP2</div>
+        </div>
+        <br>
+        <p>Add a stop: <select id="stopPicker">
+            <option value="">Choose a stop</option>
+        </select></p>
+
+    </div>
+    <div class="col-md-6">
+        <div id="map"></div>
+        Below Map stuff
+    </div>
+</div>
+
+</div>
+<script src="js/common.js"></script>
+<script src="js/routes.js"></script>
+
+</body>
+</html>

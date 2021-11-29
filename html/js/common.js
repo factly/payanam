@@ -218,6 +218,12 @@ function topMenu() {
   <div class="navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item">
+      <a class="nav-link" href="stops.html">Stops</a>
+      </li>
+      <li class="nav-item">
+      <a class="nav-link" href="routes.html">Routes</a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link" href="index.html">Overview</a>
       </li>
       <li class="nav-item">
@@ -239,10 +245,7 @@ function topMenu() {
       <li class="nav-item">
       <a class="nav-link" href="print.html">Print</a>
       </li>
-      <li class="nav-item">
-      <a class="nav-link" href="stops.html">Stops</a>
-      </li>
-
+      
     </ul>
     <span class="navbar-text"><small>
       <a id="versionNum" href="https://github.com/WRI-Cities/payanam" target="_blank"></a> | <a href="admin.html">Admin</a>
@@ -397,6 +400,7 @@ function loadDefaults(callbackFlag=false, callbackFunc=null) {
 }
 
 
+var globalConfig = [];
 function loadConfig() {
     var payload = {};
     $.ajax({
@@ -406,8 +410,8 @@ function loadConfig() {
         cache: false,
         contentType: 'application/json',
         success : function(returndata) {
-            console.log(returndata);
-            
+            globalConfig = returndata['config'];
+            console.log(globalConfig);
             //processData(returndata.data);
         },
         error: function(jqXHR, exception) {
@@ -416,6 +420,7 @@ function loadConfig() {
         }
     });
 }
+loadConfig();
 
 // #########################
 // GRAYEYARD

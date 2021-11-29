@@ -32,6 +32,7 @@ CREATE TABLE patterns(
 	id VARCHAR(10) NOT NULL PRIMARY KEY,
 	route_id VARCHAR(10) NULL,
 	name VARCHAR(100) NULL,
+	sequence SMALLINT NULL,
 	description VARCHAR(500) NULL,
 	is_disabled BOOLEAN NULL,
 	headway_secs INT NULL,
@@ -40,7 +41,8 @@ CREATE TABLE patterns(
 	created_on TIMESTAMP(0) NULL,
 	created_by VARCHAR(100) NULL,
 	last_updated TIMESTAMP(0) NULL,
-	modified_by VARCHAR(100) NULL
+	modified_by VARCHAR(100) NULL,
+	CONSTRAINT patterns_c1 UNIQUE (route_id, sequence)
 );
 
 
