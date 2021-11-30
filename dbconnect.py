@@ -76,18 +76,22 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
         # make all colunm headers lowercase
         if lowerCaseColumns: df.columns = [x.lower() for x in df.columns] # from https://stackoverflow.com/questions/19726029/how-can-i-make-pandas-dataframe-column-headers-all-lowercase
         
-        if (output=='df') and (not len(df)) and (not keepCols):
-            result = []
-        elif (output=='df') and (not len(df)) and (keepCols):
+        if output=='df':
             result = df
+            if (not len(df)) and (not keepCols):
+                result = []
+        elif output == 'oneJson': 
+            if not len(df):
+                result = {}
+            else:
+                result = df.to_dict(orient='records')[0]
+
         elif (not len(df)): 
             result = []
         elif output == 'column':
             result = df.iloc[:,0].tolist() # .iloc[:,0] -> first column
         elif output == 'list':
             result = df.to_dict(orient='records')
-        elif output == 'oneJson':
-            result = df.to_dict(orient='records')[0]
         else:
             # default - df
             result = df

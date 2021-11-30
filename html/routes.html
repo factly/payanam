@@ -59,14 +59,18 @@ width: 100%;
 <div class="container-fluid">
     <br>
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-5">
         <h4>Routes</h4>
         <p>Select a route: <select id="routes_list"></select></p>
-        <p>OR Create one: <input id="new_route_name" placeholder="route name"><button onclick="createRoute()" class="btn btn-sm btn-primary">Create</button> &nbsp; <span id="createRoute_status"></span></p>
+        <p>Route name: <input id="route_name" placeholder="route name">
+            &nbsp;&nbsp;&nbsp;&nbsp;<small>..or fill these to create a new route</small>
         <p>Description: <input id="route_description"></p>
-        <p>Depot: <input id="route_depot"></p>
+        <p>Depot: <input id="route_depot">
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <button onclick="routeAction()" id="routeActionButton" class="btn btn-sm btn-primary">Create Route</button></p>
+        <p><span id="route_status"></span></p>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <h4>Patterns</h4>
         <p>Active Pattern: <select id="pattern_chosen">
             <option value="P1">P1</option>
@@ -87,6 +91,7 @@ width: 100%;
             <div class="list-group-item" id="P2">P2</div>
             <div class="list-group-item" id="P3">P3</div>
         </div>
+        <p align="right"><button id="pattern_order_button" class="btn btn-sm btn-warning">Update order</button></p>
     </div>
 </div>
 <br>

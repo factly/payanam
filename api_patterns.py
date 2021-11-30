@@ -31,3 +31,12 @@ def loadpatterns(req: loadpatterns_payload):
         returnD['patterns'] = []
     
     return returnD
+
+#############
+class updatePatternsOrder_payload(BaseModel):
+    sequence: List[str]
+
+@app.post("/API/updatePatternsOrder")
+def updatePatternsOrder(req: updatePatternsOrder_payload):
+    cf.logmessage("updatePatternsOrder api call")
+    
