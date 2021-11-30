@@ -70,7 +70,7 @@ $('a#pattern_reverse').click(function(e){
     // do reversing
 });
 
-function loadRoutesList() {
+function loadRoutesList(route_id) {
     let payload = {};
     $.ajax({
         url: `/API/loadRoutesList`,
@@ -79,13 +79,15 @@ function loadRoutesList() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
+
             $('#routes_list').select2({
                 data: returndata.results,
                 placeholder: "Choose a Route",
                 width: "300px",
                 allowClear: true
             });
-            $('#routes_list').val(null).trigger('change');
+
+            $('#routes_list').val(null).trigger('change'); // select-none, from https://select2.org/programmatic-control/add-select-clear-items#clearing-selections
 
             $('#routes_list').on('select2:select', function (e) {
                 let route_id = e.params.data.id;
@@ -111,6 +113,10 @@ function createRoute() {
         success: function (returndata) {
             console.log(returndata);
             $('#createRoute_status').html(`created, id: ${returndata['id']}`);
+            // loadRoutesList(returndata['id']);
+
+            // add the route to routesList and trigger selecting it
+            var option = new Option(payload['name'], returndata.id, true, true);
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -118,3 +124,4 @@ function createRoute() {
         }
     });
 }
+
