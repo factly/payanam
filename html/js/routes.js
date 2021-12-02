@@ -59,6 +59,12 @@ $(document).ready(function () {
 
     loadRoutesList();
 
+    
+    $("#pattern_chosen").change(function () {
+        if (! $(this).val()) return;
+        loadPattern($(this).val());
+    });
+
 });
 
 
@@ -218,7 +224,58 @@ function clearRoute(){
 
 function loadPattern(pid) {
     console.log(`loadPattern: ${pid}`);
-    let pattern = globalRoute.patterns.filter(r => {return r.id === pid});
+    let patternHolder = globalRoute.patterns.filter(r => {return r.id === pid});
+    console.log("pattern json:",patternHolder[0]);
+    $('.pattern_selected').html(patternHolder[0].name);
     let pattern_stops = globalRoute.pattern_stops[pid];
+    console.log("pattern_stops:",pattern_stops);
 
+
+}
+
+function deletePattern() {
+    let payload = {
+        "patterns": [$('#pattern_chosen').val()]
+    };
+    $('#pattern_status').html(`Deleting pattern...`);
+    $.ajax({
+        url: `/API/deletePatterns`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log(returndata);
+            $('#pattern_status').html(`Pattern deleted.`);
+            loadRouteDetails(globalRoute.route.id);
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#pattern_status').html(jqXHR.responseText);
+        }
+    });
+}
+
+function updatePatternsOrder() {
+    let payload = {"sequence": Sortable.get(document.getElementById('patterns_order_holder')).toArray() };
+    console.log("updatePatternsOrder:", payload.sequence);
+    $('#pattern_status').html('Updating patterns order...');
+    $.ajax({
+        url: `/API/updatePatternsOrder`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log(returndata);
+            $('#pattern_status').html(`Patterns re-ordered.`);
+            loadRouteDetails(globalRoute.route.id);
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#pattern_status').html(jqXHR.responseText);
+        }
+    });
 }

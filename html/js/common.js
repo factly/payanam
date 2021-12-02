@@ -411,7 +411,7 @@ function loadConfig() {
         contentType: 'application/json',
         success : function(returndata) {
             globalConfig = returndata['config'];
-            console.log(globalConfig);
+            console.log("globalConfig:",globalConfig);
             //processData(returndata.data);
         },
         error: function(jqXHR, exception) {

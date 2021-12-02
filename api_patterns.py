@@ -39,4 +39,38 @@ class updatePatternsOrder_payload(BaseModel):
 @app.post("/API/updatePatternsOrder")
 def updatePatternsOrder(req: updatePatternsOrder_payload):
     cf.logmessage("updatePatternsOrder api call")
+    returnD = { 'message': "success"}
+
+    # 2 sets of updates to avoid breaking the route + sequence constraint.
+    # First, set the new sequences as negative numbers, which we know for sure aren't being taken up.
+    for N, pid in enumerate(req.sequence):
+        newSeq = -(N+1)
+        u1 = f"update patterns set sequence={newSeq} where id='{pid}'"
+        uCount = dbconnect.execSQL(u1)
+
+    # After, populate actual new sequence numbers. All positive nums were cleared so are available.
+    for N, pid in enumerate(req.sequence):
+        newSeq = (N+1)
+        u2 = f"update patterns set sequence={newSeq} where id='{pid}'"
+        uCount = dbconnect.execSQL(u2)
+
     
+    return returnD
+
+
+############
+
+class deletePatterns_payload(BaseModel):
+    patterns: List[str]
+
+@app.post("/API/deletePatterns")
+def deletePatterns(req: deletePatterns_payload):
+    cf.logmessage("deletePatterns api call")
+    patternsSQL = cf.quoteNcomma(req.patterns)
+    d1 = f"delete from pattern_stops where pattern_id in ({patternsSQL})"
+    d2 = f"delete from patterns where id in ({patternsSQL})"
+    
+    d1Count = dbconnect.execSQL(d1)
+    d2Count = dbconnect.execSQL(d2)
+    returnD = { 'message': "success", "pattern_stops_deleted": d1Count, "patterns_deleted": d2Count }
+    return returnD
