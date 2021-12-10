@@ -1,8 +1,18 @@
 // routes.js
 var globalRoute = {};
+var allStopsLayer = new L.geoJson(null);
+var patternLayer = new L.geoJson(null);
+var stopsLayer = new L.geoJson(null);
+var matchesLayer = new L.geoJson(null);
+var otherPatternsLayer = new L.geoJson(null);
+var allStops = [];
+var allStopsi = {};
+var URLParams = {}; // for holding URL parameters
+var allStopsLoadedFlag = false;
+var routeDrawTrigger = false;
+const stopIconSize = [20, 20];
 
 // ############################################
-
 
 
 
@@ -29,10 +39,54 @@ var map = new L.Map('map', {
     scrollWheelZoom: true,
     maxZoom: 20,
 });
+$('.leaflet-container').css('cursor','crosshair'); // from https://stackoverflow.com/a/28724847/4355695 Changing mouse cursor to crosshairs
+L.control.scale({metric:true, imperial:false}).addTo(map);
+
+// layers
+var overlays = {
+    "route stops": stopsLayer,
+    "pattern": patternLayer,
+    "all stops": allStopsLayer,
+    "matches": matchesLayer,
+    "other patterns": otherPatternsLayer
+};
+var layerControl = L.control.layers(baseLayers, overlays, {collapsed: true, autoZIndex:false}).addTo(map); 
+
+// https://github.com/Leaflet/Leaflet.fullscreen
+map.addControl(new L.Control.Fullscreen({position:'topright'}));
+
+// SVG renderer
+var myRenderer = L.canvas({ padding: 0.5 });
+
+// Add in a crosshair for the map. From https://gis.stackexchange.com/a/90230/44746
+var crosshairIcon = L.icon({
+    iconUrl: crosshairPath,
+    iconSize:     [crosshairSize, crosshairSize], // size of the icon
+    iconAnchor:   [crosshairSize/2, crosshairSize/2], // point of the icon which will correspond to marker's location
+});
+crosshair = new L.marker(map.getCenter(), {icon: crosshairIcon, interactive:false});
+crosshair.addTo(map);
+// Move the crosshair to the center of the map when the user pans
+map.on('move', function(e) {
+    var currentLocation = map.getCenter();
+    crosshair.setLatLng(currentLocation);
+    $('.position').html(`${currentLocation.lat.toFixed(3)},${currentLocation.lng.toFixed(3)}`);
+});
+
+// lat, long in url
+var hash = new L.Hash(map);
+
+// easyButton
+L.easyButton('<img src="lib/route.svg" width="100%" title="toggle route lines" data-toggle="tooltip" data-placement="right">', function(btn, map){
+    routeLines();
+    ;
+}).addTo(map);
 
 // ############################################
 // RUN ON PAGE LOAD
 $(document).ready(function () {
+    loadURLParams(URLParams);
+
     // SORTABLE from https://sortablejs.github.io/Sortable/#simple-list
     new Sortable(document.getElementById('patterns_order_holder'), {
         animation: 150,
@@ -44,9 +98,9 @@ $(document).ready(function () {
         animation: 150,
         ghostClass: 'sortable-ghost',
         dataIdAttr: 'id',
-        onChange: function(/**Event*/evt) {
-            console.log(evt.newIndex);
-        }
+        // onChange: function(/**Event*/evt) {
+        //     console.log(evt.newIndex);
+        // }
     });
 
     // SortableJS commands:
@@ -58,12 +112,19 @@ $(document).ready(function () {
 
 
     loadRoutesList();
-
+    loadStops();
     
     $("#pattern_chosen").change(function () {
         if (! $(this).val()) return;
         loadPattern($(this).val());
     });
+
+    $('#pattern_copy').change(function () {
+        if (! $(this).val()) return;
+        // check if that pattern has any stops
+
+    });
+
 
 });
 
@@ -111,6 +172,11 @@ function loadRoutesList(route_id) {
             });
 
             $('#route_status').html(`All routes loaded.`);
+
+            // load a route from URLParams
+            if(URLParams['route']) {
+                $('#routes_list').val(URLParams['route']).trigger('change.select2').trigger('change');
+            }
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -173,7 +239,7 @@ function routeAction() {
     
 
 
-function loadRouteDetails(route_id) {
+function loadRouteDetails(route_id, pattern_id=null) {
     $('#route_status').html(`Loading route id ${route_id}...`);
     let payload = { route_id: route_id };
     $.ajax({
@@ -190,11 +256,14 @@ function loadRouteDetails(route_id) {
             $('#route_depot').val(returndata.route.depot);
 
             // to do: load patterns
+            $('#pattern_add').val('');
             let patternsContent = '';
             let sortableContent = '';
 
             returndata.patterns.forEach(r => {
-                patternsContent += `<option value="${r.id}">${r.name}</option>`;
+                let sel = ``;
+                if(pattern_id) sel = `selected="selected"`;
+                patternsContent += `<option value="${r.id}" ${sel}>${r.name}</option>`;
                 sortableContent += `<div class="list-group-item" id="${r.id}">${r.name}</div>`;
             })
             $('#pattern_chosen').html(patternsContent)
@@ -202,7 +271,7 @@ function loadRouteDetails(route_id) {
             
             loadPattern($('#pattern_chosen').val());
 
-            $('#route_status').html(`Loaded route`);
+            $('#route_status').html(`Loaded route id ${route_id}`);
 
         },
         error: function (jqXHR, exception) {
@@ -227,9 +296,53 @@ function loadPattern(pid) {
     let patternHolder = globalRoute.patterns.filter(r => {return r.id === pid});
     console.log("pattern json:",patternHolder[0]);
     $('.pattern_selected').html(patternHolder[0].name);
-    let pattern_stops = globalRoute.pattern_stops[pid];
-    console.log("pattern_stops:",pattern_stops);
 
+    let payload = {
+        'pattern_id': pid
+    };
+    $('#savePattern_status').html(`Loading stops for pattern ${pid}`);
+    $.ajax({
+        url: `/API/loadPattern`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log("pattern_stops:",returndata.pattern_stops);
+            let sortableContent = '';
+            returndata.pattern_stops.forEach(r => {
+                sortableContent += makeStopDiv(r.stop_id, r.name);
+            });
+            $('#stops_order_holder').html(sortableContent);
+            $('#savePattern_status').html(`Stops loaded.`);
+
+            // map it
+            if(allStopsLoadedFlag) {
+                routeLines(update=true);
+                mapStops();
+            }
+            else {
+                console.log("Stops data not loaded yet so waiting before drawing pattern but setting the routeDrawTrigger trigger");
+                routeDrawTrigger = true;
+            }
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#pattern_status').html(jqXHR.responseText);
+        }
+    });
+
+    
+    // load pattern_copy with all other patterns
+    let otherPatternsHolder = globalRoute.patterns.filter(r => {return r.id != pid});
+    // console.log("otherPatternsHolder:",otherPatternsHolder);
+    let otherContent = `<option value="">Choose</option>`;
+    otherPatternsHolder.forEach(p => {
+        // console.log(p.id,p.name);
+        otherContent += `<option value="${p.id}">${p.name}</option>`;
+    })
+    // console.log("otherContent:",otherContent);
+    $('#pattern_copy').html(otherContent);
 
 }
 
@@ -278,4 +391,274 @@ function updatePatternsOrder() {
             $('#pattern_status').html(jqXHR.responseText);
         }
     });
+}
+
+
+function addPattern() {
+    let route_id = globalRoute.route.id;
+    let name = $('#pattern_add').val();
+    if(name.length <= 1) {
+        alert("Enter a proper pattern name first.");
+        return;
+    }
+    // check if name already used
+    let nameMatch = globalRoute.patterns.filter(e => {return e.name == name});
+    if(nameMatch.length > 0) {
+        alert("This pattern name is already used.");
+        return;    
+    }
+
+    let payload = {
+        'route_id': route_id,
+        'name': name
+    };
+    $('#pattern_status').html('Adding pattern...');
+    $.ajax({
+        url: `/API/addPattern`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log(returndata);
+            $('#pattern_status').html(`Patterns re-ordered.`);
+            let pid = returndata['id'];
+
+            // reload the route, and pass in this id so that it becomes the default selected one.
+            loadRouteDetails(route_id, pattern_id=pid);
+
+            // // add the pattern to patterns List and trigger selecting it - avoid having to make another api call
+            // // https://select2.org/programmatic-control/add-select-clear-items#create-if-not-exists
+            // var newOptionP = new Option(payload['name'], pid, true, true);
+            // $('#pattern_chosen').append(newOptionP).trigger('change');
+            // loadPattern(pid);
+            $('#pattern_status').html(`Created new pattern, id: ${returndata['id']}`);
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#pattern_status').html(jqXHR.responseText);
+        }
+    });
+
+}
+
+
+function loadStops() {
+    allStopsLoadedFlag = false;
+    let payload = {
+        "data": ["id", "name", "latitude", "longitude"],
+        "indexed": true };
+    $('#savePattern_status').html(`Loading stops..`);
+    $.ajax({
+        url: `/API/loadStops`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            // stopsTable.setData(returndata['stops']);
+            // $("#stopsTable_status").html(`Loaded.`);
+            allStops = returndata['stops'];
+            allStopsi = returndata['indexed'];
+            processAllStops();
+            $('#savePattern_status').html(`Stops loaded`);
+            allStopsLoadedFlag = true;
+            if(routeDrawTrigger) {
+                console.log("Ok now you can draw the pattern");
+                routeLines(update=true);
+                mapStops();
+                routeDrawTrigger=false;
+            }
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+            $("#stopsTable_status").html(jqXHR.responseText);
+        },
+    });
+}
+
+function processAllStops() {
+    let selectContent = `<option value="">Choose a stop</option>`;
+
+    allStopsLayer.clearLayers();
+    var circleMarkerOptions = {
+        renderer: myRenderer,
+        radius: 3,
+        fillColor: 'azure',
+        color: 'black',
+        weight: 0.5,
+        opacity: 0.5,
+        fillOpacity: 0.5
+    };
+
+    var mapCounter=0;
+    allStops.forEach(e => {
+        selectContent += `<option value="${e.id}">${e.name.substring(0,50)} (${e.id})</option>`;
+
+        let lat = parseFloat(e.latitude);
+        let lon = parseFloat(e.longitude);
+        if(!checklatlng(lat,lon)) return;
+        let tooltipContent = `${e.name}<br>id: ${e.id}`;
+        let popupContent = `${e.name}<br>
+            id: ${e.id}<br>
+            <button onclick="addStop2Pattern('${e.id}')">Add to pattern</button>`;
+        let marker = L.circleMarker([lat,lon], circleMarkerOptions)
+            .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
+            .bindPopup(popupContent);
+        marker.properties = e;
+        marker.addTo(allStopsLayer);
+        mapCounter ++;
+    });
+    if (!map.hasLayer(allStopsLayer)) map.addLayer(allStopsLayer);
+
+    $('#stopPicker').html(selectContent);
+
+    $('#stopPicker').select2({
+        // data: returndata.results,
+        placeholder: "Choose a Stop",
+        width: "400px",
+        allowClear: true
+    });
+
+    $('#stopPicker').change(function () {
+        if (! $(this).val()) return;
+        let stop_id = $(this).val();
+        let stopRow = allStopsi[stop_id];
+        let sortableContent = makeStopDiv(stop_id, stopRow.name);
+        $('#stops_order_holder').append(sortableContent);
+
+    });
+
+}
+
+function addStop2Pattern(stop_id) {
+    console.log("addStop2Pattern",stop_id);
+    let stopRow = allStopsi[stop_id];
+    let sortableContent = makeStopDiv(stop_id, stopRow.name);
+    $('#stops_order_holder').append(sortableContent);
+    map.closePopup(); // close popup
+    routeLines(update=true);
+    mapStops();
+}
+
+function savePattern() {
+    console.log("savePattern");
+}
+
+function savePattern() {
+
+    let payload = {
+        "pattern_id": $('#pattern_chosen').val(),
+        "stops": Sortable.get(document.getElementById('stops_order_holder')).toArray()
+    };
+    console.log("savePattern:", payload);
+    $('#savePattern_status').html(`Saving...`);
+    $.ajax({
+        url: `/API/editPattern`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log(returndata);
+            $('#savePattern_status').html(`Pattern Saved.`);
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+            $('#savePattern_status').html(jqXHR.responseText);
+        },
+    });   
+}
+
+function removeStop(id) {
+    console.log("removeStop:", id);
+    $(`.stop_${id}`).remove();
+    routeLines(update=true);
+    mapStops();
+
+}
+
+function makeStopDiv(id, name) {
+    let sortableContent = `<div class="list-group-item stop_${id}" id="${id}">${name}
+        &nbsp;&nbsp;&nbsp;<small>${id}</small>
+        <button class="x" onclick="removeStop('${id}')">x</button>
+        </div>`;
+    // close button code from https://stackoverflow.com/a/33336458/4355695
+    return sortableContent;
+}
+
+
+// #################################
+// route on map
+
+function routeLines(update=false) {
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    if(!stop_ids.length) return;
+
+    if(patternLayer.getLayers().length && map.hasLayer(patternLayer) && !update) {
+        // toggle off if already loaded and visible
+        map.removeLayer(patternLayer);
+        return;
+    }
+    patternLayer.clearLayers();
+
+    let arr1 = [];
+    stop_ids.forEach(s => {
+        let srow = allStopsi[s];
+        if(! checklatlng(srow.latitude,srow.longitude)) return;
+        arr1.push([srow.latitude,srow.longitude]);
+    });
+    console.log(arr1);
+
+    if(arr1.length < 2) {
+        alert("Less than 2 of the stops are mapped, so we cannot show the route on map. Pls add or map stops.");
+        return;
+    }
+
+    var mapLine = L.polyline.antPath(arr1, {
+        color: 'purple', weight:4, delay:1500, interactive:false 
+    }).addTo(patternLayer);
+    if (!map.hasLayer(patternLayer)) map.addLayer(patternLayer);
+}
+
+function mapStops() {
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    if(!stop_ids.length) return;
+
+    stopsLayer.clearLayers();
+    let stopCounter = 0;
+    for(let i=1;i<=stop_ids.length;i++) {
+        let srow = allStopsi[stop_ids[i-1]];
+        if(! checklatlng(srow.latitude,srow.longitude)) return;
+
+        let tooltipContent = `${i}: ${srow.name}
+        <br><small>${stop_ids[i-1]}</small>`;
+        let popupContent = ``;
+
+        var circleMarkerOptions = {
+            renderer: myRenderer,
+            radius: 5,
+            fillColor: 'green',
+            color: 'black',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+        };
+
+        // let marker = L.circleMarker([srow.latitude,srow.longitude], circleMarkerOptions)
+        let marker = L.marker([lat,lon], { 
+            icon: L.divIcon({
+                className: `stop-divicon`,
+                iconSize: stopIconSize,
+                html: ( parseInt(i)+1 )
+            }) 
+        })
+        .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
+        .bindPopup(popupContent);
+        marker.properties = srow;
+        marker.properties['id'] = stop_ids[i-1];
+        marker.addTo(stopsLayer);
+    }
+    if (!map.hasLayer(stopsLayer)) map.addLayer(stopsLayer);
 }

@@ -1,6 +1,6 @@
 # api_stops.py
 
-import os
+import os, time
 from typing import Optional, List
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
@@ -15,21 +15,30 @@ import dbconnect
 ###############
 
 class loadStops_payload(BaseModel):
-    criteria: Optional[str] = None
-    data: List[str] = None
+    # criteria: Optional[str] = None
+    data: List[str] = []
+    indexed: Optional[bool] = False
 
 
 @app.post("/API/loadStops")
 def loadStops(req: loadStops_payload):
     cf.logmessage("loadStops api call")
-    s1 = f"select * from stops_master"
+
+    if len(req.data): cols = ','.join(req.data)
+    else: cols = "*" 
+    s1 = f"select {cols} from stops_master"
     df = dbconnect.makeQuery(s1, output='df')
     returnD = { 'message': "success"}
     if len(df):
-        returnD['stops'] = df.to_dict(orient='records') 
+        returnD['stops'] = df.to_dict(orient='records')
+        if req.indexed:
+            returnD['indexed'] = df.set_index('id').to_dict(orient='index')
     else:
         returnD['stops'] = []
+        if req.indexed:
+            returnD['indexed'] = {}
     
+    time.sleep(5)
     return returnD
 
 
