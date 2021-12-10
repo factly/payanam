@@ -193,6 +193,7 @@ def loadPattern(req: loadPattern_payload):
     left join stops_master as t2 
     on t1.stop_id = t2.id 
     where t1.pattern_id = '{req.pattern_id}'
+    order by t1.stop_sequence
     """
     df1 = dbconnect.makeQuery(s1, output='df', keepCols=True)
     returnD['pattern_id'] = req.pattern_id

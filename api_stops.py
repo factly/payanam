@@ -88,16 +88,16 @@ def addStops(req: addStops_payload):
         ivals= [f"{row['space_id']}", f"'{row['id']}'", f"'{row['name']}'", "CURRENT_TIMESTAMP", f"'{row['created_by']}'" ]
         if row.get('latitude'): 
             icols.append('latitude')
-            iterms.append(f"{row['latitude']}")
+            ivals.append(f"{row['latitude']}")
         if row.get('longitude'): 
             icols.append('longitude')
-            iterms.append(f"{row['longitude']}")
+            ivals.append(f"{row['longitude']}")
         if row.get('description'): 
             icols.append('description')
-            iterms.append(f"'{row['description']}'")
+            ivals.append(f"'{row['description']}'")
         if row.get('group_id'): 
             icols.append('group_id')
-            iterms.append(f"'{row['group_id']}'")
+            ivals.append(f"'{row['group_id']}'")
         
 
         i1 = f"""insert into stops_master ({','.join(icols)}) values ({','.join(ivals)})"""
@@ -110,10 +110,10 @@ def addStops(req: addStops_payload):
     returnD = { 'message': "success", "num_added": 0, "num_not_added":0, "added":[], "not_added":[] }
     if len(added):
         returnD['num_added'] = len(added)
-        returnD['added'] = [x['name'] for x in added]
+        returnD['added'] = [x['id'] for x in added]
     if len(not_added):
         returnD['num_not_added'] = len(not_added)
-        returnD['not_added'] = [x['name'] for x in not_added]
+        returnD['not_added'] = [x['id'] for x in not_added]
 
     return returnD
     # if status:

@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="lib/easy-button.css" alt="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
 <link rel="stylesheet" href="lib/chosen/chosen.min.css">
 <link href='lib/leaflet.fullscreen.css' alt='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+<link rel="stylesheet" href="lib/leaflet.contextmenu.min.css">
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <!-- <link href="js/style.css" rel="stylesheet"> -->
@@ -31,6 +32,7 @@
 <script src="lib/Leaflet.Control.Custom.js"></script>
 <script src="lib/leaflet-providers.js"></script>
 <script src="lib/leaflet-hash.min.js"></script>
+<script src="lib/leaflet.contextmenu.min.js"></script>
 
 <!-- Select2 - https://select2.org/getting-started/installation -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -63,6 +65,21 @@ width: 100%;
     right: -10px;
     font-weight: bold;
     font-size: 1.2em;
+}
+
+.stop-divicon {
+    border-radius: 100%;
+    color: white;
+    padding-top: 1px;
+    /*padding-bottom: 20px;*/
+    padding-left: 0px;
+    position: absolute;
+    text-align: center;
+    overflow: hidden;
+    /*box-shadow:0px 0px 10px black; /*looks 3D! no need of a border*/
+    background-color: green;
+    border: 2px solid white;
+    font-size: 8pt;
 }
 
 
@@ -112,7 +129,7 @@ width: 100%;
     <div class="col-md-9">
         Copy from other pattern: <select id="pattern_copy">
             <option value="">Choose</option>
-        </select> | <a href="#" id="pattern_reverse">Reverse this pattern</a>
+        </select> | <a href="#" id="pattern_reverse" onclick="reversePattern()">Reverse this pattern</a>
     </div>
 </div>
 
@@ -138,6 +155,32 @@ width: 100%;
 </div>
 
 </div>
+
+
+<!-- Modal new stop from map-->
+<div class="modal fade" id="modal_newStop" tabindex="-1" aria-labelledby="modal1Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal1Label">Add New Stop</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="container-fluid">
+                    <p>Name: <input id="newStop_name"></p>
+            </div>      
+        <div class="modal-footer">
+            <span id="route_newStop_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
+            <button type="button" class="btn btn-success btn-sm" onclick="route_newStop()">
+            Add Stop</button><!-- data-dismiss="modal"-->
+            
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/common.js"></script>
 <script src="js/routes.js"></script>
 

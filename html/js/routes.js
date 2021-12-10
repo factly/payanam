@@ -11,7 +11,7 @@ var URLParams = {}; // for holding URL parameters
 var allStopsLoadedFlag = false;
 var routeDrawTrigger = false;
 const stopIconSize = [20, 20];
-
+var globalClickLat, globalClickLon;
 // ############################################
 
 
@@ -38,6 +38,11 @@ var map = new L.Map('map', {
     layers: [cartoPositron],
     scrollWheelZoom: true,
     maxZoom: 20,
+    contextmenu: true,
+    contextmenuWidth: 140,
+    contextmenuItems: [
+        { text: 'Add a new Stop here', callback: route_newStop_popup },
+    ]
 });
 $('.leaflet-container').css('cursor','crosshair'); // from https://stackoverflow.com/a/28724847/4355695 Changing mouse cursor to crosshairs
 L.control.scale({metric:true, imperial:false}).addTo(map);
@@ -82,6 +87,17 @@ L.easyButton('<img src="lib/route.svg" width="100%" title="toggle route lines" d
     ;
 }).addTo(map);
 
+// globally used marker styles
+var allStopsMarkerOptions = {
+    renderer: myRenderer,
+    radius: 3,
+    fillColor: 'azure',
+    color: 'black',
+    weight: 0.5,
+    opacity: 0.5,
+    fillOpacity: 0.5
+};
+
 // ############################################
 // RUN ON PAGE LOAD
 $(document).ready(function () {
@@ -98,9 +114,11 @@ $(document).ready(function () {
         animation: 150,
         ghostClass: 'sortable-ghost',
         dataIdAttr: 'id',
-        // onChange: function(/**Event*/evt) {
-        //     console.log(evt.newIndex);
-        // }
+        onChange: function(/**Event*/evt) {
+            //console.log(evt.newIndex);
+            routeLines(update=true);
+            mapStops();
+        }
     });
 
     // SortableJS commands:
@@ -482,17 +500,8 @@ function processAllStops() {
     let selectContent = `<option value="">Choose a stop</option>`;
 
     allStopsLayer.clearLayers();
-    var circleMarkerOptions = {
-        renderer: myRenderer,
-        radius: 3,
-        fillColor: 'azure',
-        color: 'black',
-        weight: 0.5,
-        opacity: 0.5,
-        fillOpacity: 0.5
-    };
-
-    var mapCounter=0;
+    
+    // var mapCounter=0;
     allStops.forEach(e => {
         selectContent += `<option value="${e.id}">${e.name.substring(0,50)} (${e.id})</option>`;
 
@@ -503,12 +512,12 @@ function processAllStops() {
         let popupContent = `${e.name}<br>
             id: ${e.id}<br>
             <button onclick="addStop2Pattern('${e.id}')">Add to pattern</button>`;
-        let marker = L.circleMarker([lat,lon], circleMarkerOptions)
+        let marker = L.circleMarker([lat,lon], allStopsMarkerOptions)
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
             .bindPopup(popupContent);
         marker.properties = e;
         marker.addTo(allStopsLayer);
-        mapCounter ++;
+        // mapCounter ++;
     });
     if (!map.hasLayer(allStopsLayer)) map.addLayer(allStopsLayer);
 
@@ -647,11 +656,11 @@ function mapStops() {
         };
 
         // let marker = L.circleMarker([srow.latitude,srow.longitude], circleMarkerOptions)
-        let marker = L.marker([lat,lon], { 
+        let marker = L.marker([srow.latitude,srow.longitude], { 
             icon: L.divIcon({
                 className: `stop-divicon`,
                 iconSize: stopIconSize,
-                html: ( parseInt(i)+1 )
+                html: i
             }) 
         })
         .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
@@ -661,4 +670,71 @@ function mapStops() {
         marker.addTo(stopsLayer);
     }
     if (!map.hasLayer(stopsLayer)) map.addLayer(stopsLayer);
+}
+
+
+function route_newStop_popup(e) {
+    globalClickLat = parseFloat(e.latlng.lat.toFixed(6));
+    globalClickLon = parseFloat(e.latlng.lng.toFixed(6));
+
+    $('#route_newStop_status').html(`Add a stop on ${globalClickLat},${globalClickLon}`);
+    // trigger modal popup
+    $('#modal_newStop').modal('show');
+}
+
+function route_newStop() {
+    // this will come from the popup
+    // dynamically create a new stop on the map, send it to backend, and add it to the pattern also
+    // structure to add to allStops and allStopsi: 
+    /*
+    {"id": "ZG5KJCQ", "name": "4th Phase, KPHB 4th Phase", "latitude": 17.47122, "longitude": 78.38798 }
+    "0-CSEKQ": {"name": "Mother Teresa Statue, Regimental Bazar / Mother Teresa Statue, Mother Teresa", "latitude": 17.43797, "longitude": 78.5046 }
+    */
+    let name = $('#newStop_name').val();
+    if(!name) {
+        $('#route_newStop_status').html(`You have to set a name.`);
+        return;
+    }
+    let payload = { "data": [{
+            "name": name,
+            "latitude": globalClickLat, "longitude": globalClickLon
+    }] };
+    $('#route_newStop_status').html(`Adding the stop to DB..`);
+    $.ajax({
+        url: `/API/addStops`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        processData: false,  // tell jQuery not to process the data
+        contentType: 'application/json',
+        success: function (returndata) {
+            // now add it to the present pattern
+            let pattern_id = $('#pattern_chosen').val();
+            let stop_id = returndata.added[0];
+            // add this stop to global allStops and allStopsi:
+            allStopsi[stop_id] = {name: name, latitude: globalClickLat, 
+                longitude: globalClickLon };
+            allStops.push({id: stop_id, name: name, latitude: globalClickLat, 
+                longitude: globalClickLon});
+
+            // add this stop to the pattern
+            addStop2Pattern(stop_id);
+
+
+            $('#route_newStop_status').html(`Added`);
+            $('#modal_newStop').modal('hide');
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+            $("#route_newStop_status").html(jqXHR.responseText);
+            var message = JSON.parse(jqXHR.responseText)['message'];
+            if(message) $("#route_newStop_status").html(message);
+        }
+    });
+}
+
+function reversePattern() {
+    Sortable.get(document.getElementById('stops_order_holder')).sort(order.reverse(), true);
+    routeLines(update=true);
+    mapStops();
 }

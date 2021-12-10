@@ -147,7 +147,6 @@ $.ajax({
         data : JSON.stringify(payload),
         cache: false,
         contentType: 'application/json',
-        // dataType : 'html',
         success : function(returndata) {
             // will be already in json, no need to JSON.parse
             processData(returndata.data);
@@ -218,23 +217,24 @@ function addStop() {
     // 18.446,76.678 Bhatangali BANL
     var currentLocation = map.getCenter();
 
-    let payload = { 
+    let payload = [{ 
         // "id": $('#manual_id').val(), 
         "name": $('#manual_name').val(),
         "latitude": parseFloat(currentLocation.lat.toFixed(6)),
         "longitude": parseFloat(currentLocation.lng.toFixed(6)),
         "description": $('#manual_description').val(),
-        "id": $('#manual_id').val().toUpperCase()
-    };
+        // "id": $('#manual_id').val().toUpperCase()
+    }];
     $('#addStop_status').html(`Sending...`);
     $.ajax({
-        url: `/API/addStop`,
+        url: `/API/addStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
         processData: false,  // tell jQuery not to process the data
-        contentType: false,  // tell jQuery not to set contentType
+        contentType: 'application/json',
         success: function (returndata) {
+            console.log(returndata);
             $('#addStop_status').html(`Sent.`);
         },
         error: function (jqXHR, exception) {
@@ -394,7 +394,7 @@ function updateStopLocation(id) {
         data : JSON.stringify(payload),
         cache: false,
         processData: false,  // tell jQuery not to process the data
-        contentType: false,  // tell jQuery not to set contentType
+        contentType: 'application/json',
         success: function (returndata) {
             $('#updateStop_status').html(`Updated successfully.`);
         },
