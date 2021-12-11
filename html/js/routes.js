@@ -118,6 +118,7 @@ $(document).ready(function () {
             //console.log(evt.newIndex);
             routeLines(update=true);
             mapStops();
+            reNumber();
         }
     });
 
@@ -139,8 +140,7 @@ $(document).ready(function () {
 
     $('#pattern_copy').change(function () {
         if (! $(this).val()) return;
-        // check if that pattern has any stops
-
+        copyFromPattern($(this).val());
     });
 
 
@@ -149,12 +149,6 @@ $(document).ready(function () {
 
 // ############################################
 // FUNCTIONS
-
-$('a#pattern_reverse').click(function(e){
-    e.preventDefault();
-    console.log('reversing!');
-    // do reversing
-});
 
 function loadRoutesList(route_id) {
     $('#route_status').html(`Loading routes...`);
@@ -178,7 +172,7 @@ function loadRoutesList(route_id) {
 
             $('#routes_list').on('change', function (e) {
                 let route_id = $('#routes_list').val();
-                console.log(`routes_list select2:select event, ${route_id} chosen`);
+                // console.log(`routes_list select2:select event, ${route_id} chosen`);
                 if(!route_id) return;
 
                 loadRouteDetails(route_id);
@@ -267,7 +261,7 @@ function loadRouteDetails(route_id, pattern_id=null) {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            console.log(returndata);
+            // console.log(returndata);
             globalRoute = returndata;
             $('#route_name').val(returndata.route.name);
             $('#route_description').val(returndata.route.description);
@@ -309,16 +303,22 @@ function clearRoute(){
     $('#routeActionButton').html(`Create Route`);
 }
 
+// ####################################
+// PATTERNS
+
 function loadPattern(pid) {
     console.log(`loadPattern: ${pid}`);
     let patternHolder = globalRoute.patterns.filter(r => {return r.id === pid});
-    console.log("pattern json:",patternHolder[0]);
+    // console.log("pattern json:",patternHolder[0]);
     $('.pattern_selected').html(patternHolder[0].name);
 
+    patternLayer.clearLayers();
+    stopsLayer.clearLayers();
+    $('#stops_order_holder').html(`Loading..`);
+    $('#savePattern_status').html(`Loading stops for pattern ${pid}`);
     let payload = {
         'pattern_id': pid
     };
-    $('#savePattern_status').html(`Loading stops for pattern ${pid}`);
     $.ajax({
         url: `/API/loadPattern`,
         type: "POST",
@@ -326,13 +326,14 @@ function loadPattern(pid) {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            console.log("pattern_stops:",returndata.pattern_stops);
+            // console.log("pattern_stops:",returndata.pattern_stops);
             let sortableContent = '';
-            returndata.pattern_stops.forEach(r => {
+            returndata.pattern_stops.forEach((r,N) => {
                 sortableContent += makeStopDiv(r.stop_id, r.name);
             });
             $('#stops_order_holder').html(sortableContent);
-            $('#savePattern_status').html(`Stops loaded.`);
+            reNumber();
+            $('#savePattern_status').html(`Pattern loaded.`);
 
             // map it
             if(allStopsLoadedFlag) {
@@ -346,7 +347,7 @@ function loadPattern(pid) {
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
-            $('#pattern_status').html(jqXHR.responseText);
+            $('#savePattern_status').html(jqXHR.responseText);
         }
     });
 
@@ -461,13 +462,47 @@ function addPattern() {
 
 }
 
+function savePattern() {
+    let payload = {
+        "pattern_id": $('#pattern_chosen').val(),
+        "stops": Sortable.get(document.getElementById('stops_order_holder')).toArray()
+    };
+    // console.log("savePattern:", payload);
+    $('#savePattern_status').html(`Saving...`);
+    $.ajax({
+        url: `/API/editPattern`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log(returndata);
+            $('#savePattern_status').html(`Pattern Saved.`);
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+            $('#savePattern_status').html(jqXHR.responseText);
+        },
+    });   
+}
+
+function resetPattern() {
+    let pid = $('#pattern_chosen').val();
+    loadPattern(pid);
+}
+
+
+
+// ####################################
+// STOPS
+
 
 function loadStops() {
     allStopsLoadedFlag = false;
     let payload = {
         "data": ["id", "name", "latitude", "longitude"],
         "indexed": true };
-    $('#savePattern_status').html(`Loading stops..`);
+    $('#belowMap').html(`Loading stops..`);
     $.ajax({
         url: `/API/loadStops`,
         type: "POST",
@@ -480,7 +515,7 @@ function loadStops() {
             allStops = returndata['stops'];
             allStopsi = returndata['indexed'];
             processAllStops();
-            $('#savePattern_status').html(`Stops loaded`);
+            $('#belowMap').html(`All stops loaded`);
             allStopsLoadedFlag = true;
             if(routeDrawTrigger) {
                 console.log("Ok now you can draw the pattern");
@@ -491,7 +526,7 @@ function loadStops() {
         },
         error: function (jqXHR, exception) {
             console.log("error:", jqXHR.responseText);
-            $("#stopsTable_status").html(jqXHR.responseText);
+            $("#belowMap").html(jqXHR.responseText);
         },
     });
 }
@@ -511,7 +546,7 @@ function processAllStops() {
         let tooltipContent = `${e.name}<br>id: ${e.id}`;
         let popupContent = `${e.name}<br>
             id: ${e.id}<br>
-            <button onclick="addStop2Pattern('${e.id}')">Add to pattern</button>`;
+            <button onclick="insertStopInPattern('${e.id}')">Add to pattern</button> at <input class="narrow" id="stopPosition">`;
         let marker = L.circleMarker([lat,lon], allStopsMarkerOptions)
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
             .bindPopup(popupContent);
@@ -536,7 +571,7 @@ function processAllStops() {
         let stopRow = allStopsi[stop_id];
         let sortableContent = makeStopDiv(stop_id, stopRow.name);
         $('#stops_order_holder').append(sortableContent);
-
+        reNumber();
     });
 
 }
@@ -546,38 +581,34 @@ function addStop2Pattern(stop_id) {
     let stopRow = allStopsi[stop_id];
     let sortableContent = makeStopDiv(stop_id, stopRow.name);
     $('#stops_order_holder').append(sortableContent);
+    reNumber();
     map.closePopup(); // close popup
     routeLines(update=true);
     mapStops();
 }
 
-function savePattern() {
-    console.log("savePattern");
-}
+function insertStopInPattern(stop_id) {
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    let pos = parseInt($('#stopPosition').val());
+    console.log("insertStopInPattern",stop_id, pos);
+    if((!pos && pos!=0)|| pos=='' || pos>stop_ids.length || pos < 0 ) {
+        addStop2Pattern(stop_id);
+        return;
+    }
+    
+    stop_ids.splice(pos-1, 0, stop_id);
+    // console.log(stop_ids);
+    let sortableContent = '';
+    stop_ids.forEach((id,N) => {
+        sortableContent += makeStopDiv(id, allStopsi[id].name);
+    });
+    $('#stops_order_holder').html(sortableContent);
+    reNumber();
+    routeLines(update=true);
+    mapStops();
 
-function savePattern() {
-
-    let payload = {
-        "pattern_id": $('#pattern_chosen').val(),
-        "stops": Sortable.get(document.getElementById('stops_order_holder')).toArray()
-    };
-    console.log("savePattern:", payload);
-    $('#savePattern_status').html(`Saving...`);
-    $.ajax({
-        url: `/API/editPattern`,
-        type: "POST",
-        data : JSON.stringify(payload),
-        cache: false,
-        contentType: 'application/json',
-        success: function (returndata) {
-            console.log(returndata);
-            $('#savePattern_status').html(`Pattern Saved.`);
-        },
-        error: function (jqXHR, exception) {
-            console.log("error:", jqXHR.responseText);
-            $('#savePattern_status').html(jqXHR.responseText);
-        },
-    });   
+    $('#stopPosition').val('');
+    map.closePopup(); // close popup
 }
 
 function removeStop(id) {
@@ -589,15 +620,64 @@ function removeStop(id) {
 }
 
 function makeStopDiv(id, name) {
-    let sortableContent = `<div class="list-group-item stop_${id}" id="${id}">${name}
+    // if(!sr) sr = $('#stops_order_holder').children().length + 1;
+    let sortableContent = `<div class="list-group-item stop_${id}" id="${id}"><span id="stopNum_${id}"></span>. ${name}
         &nbsp;&nbsp;&nbsp;<small>${id}</small>
-        <button class="x" onclick="removeStop('${id}')">x</button>
+        <div class="x" onclick="removeStop('${id}')">x</div>
         </div>`;
     // close button code from https://stackoverflow.com/a/33336458/4355695
     return sortableContent;
 }
 
+function reNumber() {
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    stop_ids.forEach((id, N) => {
+        $(`#stopNum_${id}`).html(String(N+1));
+    });
+}
 
+$('a#pattern_reverse').click(function(e){
+    e.preventDefault();
+    console.log('reversing!');
+    // do reversing
+    let sortable = Sortable.get(document.getElementById('stops_order_holder'));
+    let order = sortable.toArray();
+    sortable.sort(order.reverse(), true);
+    reNumber();
+    routeLines(update=true);
+    mapStops();
+});
+
+function copyFromPattern(pid) {
+    let payload = {
+        'pattern_id': pid
+    };
+    $.ajax({
+        url: `/API/loadPattern`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            // console.log("pattern_stops:",returndata.pattern_stops);
+            let sortableContent = '';
+            returndata.pattern_stops.forEach((r,N) => {
+                let sortableContent = makeStopDiv(r.stop_id, r.name);
+                $('#stops_order_holder').append(sortableContent);
+            });
+            reNumber();
+            $('#savePattern_status').html(`Stops from ${pid} added.`);
+
+            routeLines(update=true);
+            mapStops();
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#savePattern_status').html(jqXHR.responseText);
+        }
+    });
+}
 // #################################
 // route on map
 
@@ -618,10 +698,10 @@ function routeLines(update=false) {
         if(! checklatlng(srow.latitude,srow.longitude)) return;
         arr1.push([srow.latitude,srow.longitude]);
     });
-    console.log(arr1);
+    // console.log(arr1);
 
     if(arr1.length < 2) {
-        alert("Less than 2 of the stops are mapped, so we cannot show the route on map. Pls add or map stops.");
+        // alert("Less than 2 of the stops are mapped, so we cannot show the route on map. Pls add or map stops.");
         return;
     }
 
@@ -643,7 +723,8 @@ function mapStops() {
 
         let tooltipContent = `${i}: ${srow.name}
         <br><small>${stop_ids[i-1]}</small>`;
-        let popupContent = ``;
+        let popupContent = `${tooltipContent}<br>
+        <button onclick="removeStop('${stop_ids[i-1]}')">Remove from pattern</button>`;
 
         var circleMarkerOptions = {
             renderer: myRenderer,
@@ -733,8 +814,3 @@ function route_newStop() {
     });
 }
 
-function reversePattern() {
-    Sortable.get(document.getElementById('stops_order_holder')).sort(order.reverse(), true);
-    routeLines(update=true);
-    mapStops();
-}

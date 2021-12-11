@@ -55,16 +55,22 @@ width: 100%;
 
 .list-group-item {
     position: relative;
+    height: 40px;
 }
 
 .x {
     position: absolute;
-    background: #800000;
+    background: #ff6666;
     color: white;
-    top: 0px;
-    right: -10px;
+    top: 5px;
+    right: -5px;
     font-weight: bold;
-    font-size: 1.2em;
+    font-size: 1em;
+    height: 20px;
+    vertical-align: text-top;
+    width: 20px;
+    text-align: center;
+    cursor:pointer;
 }
 
 .stop-divicon {
@@ -82,6 +88,38 @@ width: 100%;
     font-size: 8pt;
 }
 
+#stops_order_holder {
+    height: 75vh;
+    overflow-y: scroll;
+}
+
+#routeBand {
+    padding-top: 20px;
+    background: #e6f2ff; /*light blue*/
+}
+
+#stopsBand {
+    padding-top: 20px;
+    background: #ffffe6; /*light yellow*/
+}
+
+#timeBand {
+    padding-top: 20px;
+    background: #e6ffe6; /*light green*/
+}
+
+#patterns_order_holder {
+    max-height: 400px;
+    overflow-y: scroll;
+}
+
+.narrow {
+    width: 30px;
+}
+
+#pattern_chosen {
+    height: 2em;
+}
 
 </style>
 </head>
@@ -89,8 +127,7 @@ width: 100%;
 <div id="topMenu"></div>
 
 <div class="container-fluid">
-    <br>
-<div class="row">
+<div class="row" id="routeBand">
     <div class="col-md-5">
         <h4>Routes</h4>
         <p>Select a route: <select id="routes_list"></select></p>
@@ -120,8 +157,9 @@ width: 100%;
         </div>
         <p align="right"><button id="pattern_order_button" class="btn btn-sm btn-warning" onclick="updatePatternsOrder()">Update order</button></p>
     </div>
+
 </div>
-<br>
+<div id="stopsBand">
 <div class="row">
     <div class="col-md-3">
         <h4>Stops in pattern: <span class="pattern_selected"></span></h4>
@@ -129,7 +167,7 @@ width: 100%;
     <div class="col-md-9">
         Copy from other pattern: <select id="pattern_copy">
             <option value="">Choose</option>
-        </select> | <a href="#" id="pattern_reverse" onclick="reversePattern()">Reverse this pattern</a>
+        </select> | <a href="#" id="pattern_reverse">Reverse this pattern</a>
     </div>
 </div>
 
@@ -142,20 +180,36 @@ width: 100%;
         <br>
         <p>Add a stop: <select id="stopPicker">
             <option value="">Choose a stop</option>
-        </select></p>
-        <p><button class="btn btn-sm btn-primary" onclick="savePattern()">Save this Pattern</button>
-            &nbsp;&nbsp;&nbsp;&nbsp;<span id="savePattern_status"></span>
+        </select>
         </p>
+        <div class="row">
+            <div class="col-md-4">
+                <button class="btn btn-sm btn-primary" onclick="savePattern()">Save this Pattern</button>
+            </div>
+            <div class="col-md-4">
+                <span id="savePattern_status"></span>
+            </div>
+            <div class="col-md-4">
+                <button class="btn btn-sm btn-danger" onclick="resetPattern()">Undo Changes</button>
+            </div>
+        </div>
+
 
     </div>
     <div class="col-md-8">
         <div id="map"></div>
-        Below Map stuff
+        <span id="belowMap">Below Map stuff</span>
     </div>
 </div>
-
+<br>
 </div>
 
+<div id="timeBand"  class="row">
+    <div class="col-md-4">
+        <h4>Timings for pattern: <span class="pattern_selected"></span></h4>
+    </div>
+</div>
+<br><br><br><br><br><br><br><br>
 
 <!-- Modal new stop from map-->
 <div class="modal fade" id="modal_newStop" tabindex="-1" aria-labelledby="modal1Label" aria-hidden="true">
@@ -170,15 +224,16 @@ width: 100%;
             <div class="modal-body">
                 <div class="container-fluid">
                     <p>Name: <input id="newStop_name"></p>
+                </div>
             </div>      
         <div class="modal-footer">
             <span id="route_newStop_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
             <button type="button" class="btn btn-success btn-sm" onclick="route_newStop()">
             Add Stop</button><!-- data-dismiss="modal"-->
             
-      </div>
+        </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <script src="js/common.js"></script>
