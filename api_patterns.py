@@ -20,7 +20,7 @@ class loadpatterns_payload(BaseModel):
     stopsFlag: Optional[bool] = None
     locationsFlag: Optional[bool] = None
 
-@app.post("/API/loadpatterns")
+@app.post("/API/loadpatterns", tags=["patterns"])
 def loadpatterns(req: loadpatterns_payload):
     cf.logmessage("loadpatterns api call")
     route_id = req.route_id
@@ -39,7 +39,7 @@ def loadpatterns(req: loadpatterns_payload):
 class updatePatternsOrder_payload(BaseModel):
     sequence: List[str]
 
-@app.post("/API/updatePatternsOrder")
+@app.post("/API/updatePatternsOrder", tags=["patterns"])
 def updatePatternsOrder(req: updatePatternsOrder_payload):
     cf.logmessage("updatePatternsOrder api call")
     returnD = { 'message': "success"}
@@ -66,7 +66,7 @@ def updatePatternsOrder(req: updatePatternsOrder_payload):
 class deletePatterns_payload(BaseModel):
     patterns: List[str]
 
-@app.post("/API/deletePatterns")
+@app.post("/API/deletePatterns", tags=["patterns"])
 def deletePatterns(req: deletePatterns_payload):
     cf.logmessage("deletePatterns api call")
     patternsSQL = cf.quoteNcomma(req.patterns)
@@ -85,7 +85,7 @@ class addPattern_payload(BaseModel):
     route_id: str
     name: str
 
-@app.post("/API/addPattern")
+@app.post("/API/addPattern", tags=["patterns"])
 def addPattern(req: addPattern_payload):
     cf.logmessage("addPattern api call")
 
@@ -116,7 +116,7 @@ class editPattern_payload(BaseModel):
     pattern_id: str
     stops: List[str]
 
-@app.post("/API/editPattern")
+@app.post("/API/editPattern", tags=["patterns"])
 def editPattern(req: editPattern_payload):
     cf.logmessage("editPattern api call")
 
@@ -184,11 +184,12 @@ def editPattern(req: editPattern_payload):
 class loadPattern_payload(BaseModel):
     pattern_id: str
 
-@app.post("/API/loadPattern")
+@app.post("/API/loadPattern", tags=["patterns"])
 def loadPattern(req: loadPattern_payload):
     cf.logmessage("loadPattern api call")
     returnD = { "message": "success"}
 
+    # note: currently, frontend isn't using the lat-longs here, can make it use them later.
     s1 = f"""select t1.*, t2.name, t2.latitude, t2.longitude from pattern_stops as t1 
     left join stops_master as t2 
     on t1.stop_id = t2.id 

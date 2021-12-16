@@ -96,7 +96,7 @@ DROP TABLE IF EXISTS stops_master;
 CREATE TABLE stops_master(
 	space_id INT NULL,
 	id VARCHAR(10) NOT NULL PRIMARY KEY,
-	name VARCHAR(200) NULL,
+	name VARCHAR(200) NOT NULL,
 	description VARCHAR(500) NULL,
 	latitude DECIMAL(11,8) NULL,
 	longitude DECIMAL(11,8) NULL,

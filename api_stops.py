@@ -20,14 +20,14 @@ class loadStops_payload(BaseModel):
     indexed: Optional[bool] = False
 
 
-@app.post("/API/loadStops")
+@app.post("/API/loadStops", tags=["stops"])
 def loadStops(req: loadStops_payload):
     cf.logmessage("loadStops api call")
 
     if len(req.data): cols = ','.join(req.data)
     else: cols = "*" 
     s1 = f"select {cols} from stops_master"
-    df = dbconnect.makeQuery(s1, output='df')
+    df = dbconnect.makeQuery(s1, output='df', fillna=False)
     returnD = { 'message': "success"}
     if len(df):
         returnD['stops'] = df.to_dict(orient='records')
@@ -56,7 +56,7 @@ class addStops_payload_single(BaseModel):
 class addStops_payload(BaseModel):
     data: List[addStops_payload_single]
 
-@app.post("/API/addStops")
+@app.post("/API/addStops", tags=["stops"])
 def addStops(req: addStops_payload):
     """
     Add stops
@@ -136,7 +136,7 @@ class updateStops_payload_single(BaseModel):
 class updateStops_payload(BaseModel):
     data: List[updateStops_payload_single]
 
-@app.post("/API/updateStops")
+@app.post("/API/updateStops", tags=["stops"])
 def updateStops(req: updateStops_payload):
     """
     Update stops
@@ -161,7 +161,7 @@ def updateStops(req: updateStops_payload):
         uterms = []
         if row.get('name'): uterms.append(f"name='{row['name']}'")
         if row.get('latitude'): uterms.append(f"latitude={row['latitude']}")
-        if row.get('longitude'): uterms.append(f"longitude={row['name']}")
+        if row.get('longitude'): uterms.append(f"longitude={row['longitude']}")
         if row.get('description'): uterms.append(f"description='{row['description']}'")
         if row.get('group_id'): uterms.append(f"group_id='{row['group_id']}'")
 
@@ -188,7 +188,7 @@ def updateStops(req: updateStops_payload):
 class deleteStops_payload(BaseModel):
     idsList: List[str]
 
-@app.post("/API/deleteStops")
+@app.post("/API/deleteStops", tags=["stops"])
 def deleteStops(req: deleteStops_payload):
     """
     Delete stops
@@ -204,3 +204,29 @@ def deleteStops(req: deleteStops_payload):
         return returnD
     else:
         raise HTTPException(status_code=400, detail="Nothing  to delete")
+
+###############
+
+@app.get("/API/searchStops", tags=["stops"])
+def searchStops(q: Optional[str] = None ):
+    """
+    for working with https://opengeo.tech/maps/leaflet-search/examples/ajax-jquery.html
+    response should be like: [{"loc":[41.57573,13.002411],"title":"black"}]
+    """
+    s1 = f"""select name, latitude, longitude from stops_master
+    where name ilike '%{q}%'
+    and latitude is not null
+    and longitude is not null
+    order by name
+    """
+    df = dbconnect.makeQuery(s1, output='df')
+    result = []
+    if not len(df):
+        return result
+
+    for row in df.to_dict(orient='records'):
+        result.append({
+            "loc": [row['latitude'], row['longitude']],
+            "title": row['name']    
+        })
+    return result

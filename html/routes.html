@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="lib/chosen/chosen.min.css">
 <link href='lib/leaflet.fullscreen.css' alt='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
 <link rel="stylesheet" href="lib/leaflet.contextmenu.min.css">
+<link rel="stylesheet" href="lib/leaflet-search.css">
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <!-- <link href="js/style.css" rel="stylesheet"> -->
@@ -33,6 +34,7 @@
 <script src="lib/leaflet-providers.js"></script>
 <script src="lib/leaflet-hash.min.js"></script>
 <script src="lib/leaflet.contextmenu.min.js"></script>
+<script src="lib/leaflet-search.min.js"></script>
 
 <!-- Select2 - https://select2.org/getting-started/installation -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -58,7 +60,7 @@ width: 100%;
     height: 40px;
 }
 
-.x {
+.removeStopButton {
     position: absolute;
     background: #ff6666;
     color: white;
@@ -71,6 +73,11 @@ width: 100%;
     width: 20px;
     text-align: center;
     cursor:pointer;
+}
+
+.timeOffsetHolder {
+    position: relative;
+    float: right;
 }
 
 .stop-divicon {
@@ -93,17 +100,17 @@ width: 100%;
     overflow-y: scroll;
 }
 
-#routeBand {
+.routeBand {
     padding-top: 20px;
     background: #e6f2ff; /*light blue*/
 }
 
-#stopsBand {
+.stopsBand {
     padding-top: 20px;
     background: #ffffe6; /*light yellow*/
 }
 
-#timeBand {
+.timeBand {
     padding-top: 20px;
     background: #e6ffe6; /*light green*/
 }
@@ -121,13 +128,25 @@ width: 100%;
     height: 2em;
 }
 
+.divOnMap1 {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    /*font-size: 14px;*/
+    border-radius: 5px;
+    box-shadow:0px 0px 5px black; 
+}
+
+.unmapped {
+    color:  red;
+}
+
 </style>
 </head>
 <body>
 <div id="topMenu"></div>
 
 <div class="container-fluid">
-<div class="row" id="routeBand">
+<div class="row routeBand">
     <div class="col-md-5">
         <h4>Routes</h4>
         <p>Select a route: <select id="routes_list"></select></p>
@@ -159,20 +178,22 @@ width: 100%;
     </div>
 
 </div>
-<div id="stopsBand">
-<div class="row">
+
+
+<div class="row stopsBand">
     <div class="col-md-3">
         <h4>Stops in pattern: <span class="pattern_selected"></span></h4>
     </div>
     <div class="col-md-9">
         Copy from other pattern: <select id="pattern_copy">
             <option value="">Choose</option>
-        </select> | <a href="#" id="pattern_reverse">Reverse this pattern</a>
+        </select> | <a href="#" id="pattern_reverse">Reverse this pattern</a> 
+        | <a href="#" id="pattern_timeOffset_calculate">Re-calculate time offsets between stops</a>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-4">
+<div class="row stopsBand">
+    <div class="col-md-5">
         <div id="stops_order_holder" class="list-group col">
             <!-- <div class="list-group-item" id="STOP1">STOP1</div>
             <div class="list-group-item" id="STOP2">STOP2</div> -->
@@ -193,22 +214,37 @@ width: 100%;
                 <button class="btn btn-sm btn-danger" onclick="resetPattern()">Undo Changes</button>
             </div>
         </div>
+        <br>
 
 
     </div>
-    <div class="col-md-8">
+    <div class="col-md-7">
         <div id="map"></div>
         <span id="belowMap">Below Map stuff</span>
     </div>
-</div>
-<br>
+
 </div>
 
-<div id="timeBand"  class="row">
+
+
+<div class="row timeBand">
     <div class="col-md-4">
         <h4>Timings for pattern: <span class="pattern_selected"></span></h4>
     </div>
+    <div class="col-md-8">
+        other stuff
+    </div>
 </div>
+<div class="row timeBand">
+    <div class="col-md-9">
+        <p>Trips and Per-stop timings</p>
+        <div id="tabulator_stoptimes"></div>
+    </div>
+    <div class="col-md-3">
+        <p>Frequency-based trips</p>
+    </div>
+</div>
+
 <br><br><br><br><br><br><br><br>
 
 <!-- Modal new stop from map-->
@@ -230,6 +266,32 @@ width: 100%;
             <span id="route_newStop_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
             <button type="button" class="btn btn-success btn-sm" onclick="route_newStop()">
             Add Stop</button><!-- data-dismiss="modal"-->
+            
+        </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal map unmapped stop from map-->
+<div class="modal fade" id="modal_UnMappedStop" tabindex="-1" aria-labelledby="modal1Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal1Label">Map and Unmapped Stop</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="container-fluid">
+                    <p>Choose: <select id="select_unmapped_stop"></select></p>
+                </div>
+            </div>      
+        <div class="modal-footer">
+            <span id="route_UnMappedStop_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
+            <button type="button" class="btn btn-success btn-sm" onclick="route_UnMappedStop()">
+            Map this Stop</button><!-- data-dismiss="modal"-->
             
         </div>
         </div>

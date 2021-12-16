@@ -17,7 +17,7 @@ class loadConfig_payload(BaseModel):
     key: Optional[str] = None
     value: Optional[str] = None
 
-@app.post("/API/loadConfig") 
+@app.post("/API/loadConfig", tags=["config"]) 
 def loadconfig(req: loadConfig_payload):
     cf.logmessage("loadConfig api call")
     s1 = f"select config_key, config_value from config"
@@ -35,6 +35,6 @@ class saveConfig_payload(BaseModel):
     key: Optional[str] = None
     value: Optional[str] = None
 
-@app.post("/API/saveConfig") 
+@app.post("/API/saveConfig", tags=["config"]) 
 def saveConfig(req: saveConfig_payload):
     cf.logmessage("saveConfig api call")

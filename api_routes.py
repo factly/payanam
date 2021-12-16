@@ -18,7 +18,7 @@ space_id = int(os.environ.get('SPACE_ID',1))
 class loadRoutesList_payload(BaseModel):
     name: Optional[str] = None
 
-@app.post("/API/loadRoutesList")
+@app.post("/API/loadRoutesList", tags=["routes"])
 def loadRoutesList(req: loadRoutesList_payload):
     cf.logmessage("loadRoutes api call")
     s1 = f"select id, name, depot, description from routes order by name"
@@ -48,7 +48,7 @@ class addRoute_payload(BaseModel):
     depot: Optional[str] = None
     route_id: Optional[str] = None
 
-@app.post("/API/addRoute")
+@app.post("/API/addRoute", tags=["routes"])
 def addRoute(req: addRoute_payload):
     cf.logmessage("addRoute api call")
     # turn request body to dict
@@ -115,7 +115,7 @@ def addRoute(req: addRoute_payload):
 class loadRouteDetails_payload(BaseModel):
     route_id: str
 
-@app.post("/API/loadRouteDetails")
+@app.post("/API/loadRouteDetails", tags=["routes"])
 def loadRouteDetails(req: loadRouteDetails_payload):
     cf.logmessage("loadRouteDetails api call")
     route_id = req.route_id
