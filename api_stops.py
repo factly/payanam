@@ -24,8 +24,11 @@ class loadStops_payload(BaseModel):
 def loadStops(req: loadStops_payload):
     cf.logmessage("loadStops api call")
 
-    if len(req.data): cols = ','.join(req.data)
-    else: cols = "*" 
+    if len(req.data): 
+        cols = ','.join(req.data)
+    else: 
+        cols = ','.join(['id','name','description','latitude','longitude','stop_group_id','created_on','created_by','last_updated','modified_by'])
+    
     s1 = f"select {cols} from stops_master"
     df = dbconnect.makeQuery(s1, output='df', fillna=False)
     returnD = { 'message': "success"}
@@ -230,3 +233,119 @@ def searchStops(q: Optional[str] = None ):
             "title": row['name']    
         })
     return result
+
+
+###############
+
+class diagnoseStops_payload(BaseModel):
+    idsList: List[str]
+
+@app.post("/API/diagnoseStops", tags=["stops"])
+def diagnoseStops(req: diagnoseStops_payload ):
+    '''
+    Diagnose stops for reconciling
+    Fetch each stop's patterns, routes
+    '''
+    cf.logmessage("diagnoseStops api call")
+    idsListSQL = cf.quoteNcomma(req.idsList)
+    s1 = f"""
+    select t1.stop_id, t1.pattern_id, 
+    t2.route_id, t2.name as pattern_name, 
+    t3.depot, t3.name, t3.description
+    from pattern_stops as t1 
+    left join patterns as t2
+    on t1.pattern_id = t2.id
+    left join routes as t3
+    on t2.route_id = t3.id
+    where t1.stop_id in ({idsListSQL})
+    """
+    df1 = dbconnect.makeQuery(s1, output='df', fillna=False)
+
+    returnD = { "message": "success" }
+    if not len(df1):
+        returnD['patternCount'] = 0
+        return returnD
+
+    # returnD['stops'] = df1.to_dict(orient='records')
+    # print(df1)
+    # print(df1['route_id'])
+    # return returnD
+    # print("uniques:",df1['route_id'].unique())
+    
+    returnD['patterns'] = [x for x in df1['pattern_id'].unique() if x is not None]
+    returnD['patternCount'] = len(returnD['patterns'])
+
+    returnD['routes'] = [x for x in df1['route_id'].unique() if x is not None]
+    returnD['routeCount'] = len(returnD['routes'])
+
+    return returnD
+
+
+
+###############
+
+class deleteStopsConfirm_payload(BaseModel):
+    idsList: List[str]
+
+@app.post("/API/deleteStopsConfirm", tags=["stops"])
+def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
+    cf.logmessage("deleteStopsConfirm api call")
+    idsListSQL = cf.quoteNcomma(req.idsList)
+
+    returnD = { "message": "success" }
+
+    # find the patterns
+    s1 = f"select distinct pattern_id from pattern_stops where stop_id in ({idsListSQL})"
+    patternsList = dbconnect.makeQuery(s1, output='column')
+
+    if len(patternsList):
+
+        # find which routes affected
+        patternsListSQL = cf.quoteNcomma(patternsList)
+        s4 = f"select distinct route_id from patterns where id in ({patternsListSQL})"
+        routesList = dbconnect.makeQuery(s4, output='column')
+        returnD['routeCount'] = len(routesList)
+
+        # delete stop's entries from pattern_stops
+        d1 = f"delete from pattern_stops where stop_id in ({idsListSQL})"
+        pattern_deleted = dbconnect.execSQL(d1)
+        returnD['patternCount'] = pattern_deleted
+
+        # now, update job in all the patterns where this stop was.
+
+        for pN, pattern_id in enumerate(patternsList):
+            s2 = f"""select id, stop_id, stop_sequence from pattern_stops 
+            where pattern_id='{pattern_id}'
+            order by stop_sequence
+            """
+            pattern_stops = dbconnect.makeQuery(s2, output='list', fillna=False)
+            # cf.logmessage(f"Pattern {pattern_id}: {len(pattern_stops)} stops originally")
+
+            counter = 0
+            for row in pattern_stops:
+                if row['stop_id'] in req.idsList:
+                    # pattern_deleted += 1
+                    continue
+                counter +=1
+                if row['stop_sequence'] == counter:
+                    # sequence is as-is, do nothing
+                    continue
+                else: 
+                    u1 = f"""update pattern_stops set stop_sequence={counter}
+                    where id='{row['id']}'
+                    """
+                    ustatus = dbconnect.execSQL(u1)
+            
+            if counter > 0:
+                cf.logmessage(f"Changed pattern {pattern_id}, stops count changed to {counter}")
+
+    # else if the stop isn't in any patterns, proceed to delete from stops_master
+    
+    # now delete from stops master
+    d3 = f"delete from stops_master where id in ({idsListSQL})"
+    dcount = dbconnect.execSQL(d3)
+    returnD['stopCount'] = dcount
+
+    return returnD
+
+

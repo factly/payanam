@@ -7,7 +7,7 @@ var stopsLayer = new L.geoJson(null);
 var allStops = {};
 var globalTrainsData = {};
 var globalTrainsLines = {};
-var trainsLayer = new L.geoJson(null);
+// var trainsLayer = new L.geoJson(null);
 var globalUnmappedFlag = false;
 // #################################
 /* TABULATOR */
@@ -46,12 +46,9 @@ var OSM = L.tileLayer.provider('OpenStreetMap.Mapnik');
 var gStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']});
 var gHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']});
 var esriWorld = L.tileLayer.provider('Esri.WorldImagery');
-var railMap  = L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',{maxZoom: 19, subdomains:['a','b','c']});
 
-var ghd = L.tileLayer('https://anygis.ru/api/v1/Google_Sat_clean_HD/{x}/{y}/{z}',{maxZoom: 20});
-
-var baseLayers = { "OpenStreetMap.org" : OSM, "Carto Positron": cartoPositron, "ESRI Satellite": esriWorld, "OpenRailwayMap":railMap, 
-    "gStreets": gStreets, "gHybrid": gHybrid, "extra": ghd };
+var baseLayers = { "OpenStreetMap.org" : OSM, "Carto Positron": cartoPositron, "ESRI Satellite": esriWorld, 
+    "gStreets": gStreets, "gHybrid": gHybrid };
 
 var map = new L.Map('map', {
     center: STARTLOCATION,
@@ -81,7 +78,7 @@ var dragmarker = L.circleMarker(null, dragmarkerOptions);
 
 var overlays = {
     "stops": stopsLayer,
-    "trains": trainsLayer
+    // "trains": trainsLayer
 };
 var layerControl = L.control.layers(baseLayers, overlays, {collapsed: true, autoZIndex:false}).addTo(map); 
 
@@ -124,7 +121,7 @@ crosshair.addTo(map);
 map.on('move', function(e) {
     var currentLocation = map.getCenter();
     crosshair.setLatLng(currentLocation);
-    $('.position').html(`${currentLocation.lat.toFixed(3)},${currentLocation.lng.toFixed(3)}`);
+    $('.position').html(`${currentLocation.lat.toFixed(4)},${currentLocation.lng.toFixed(4)}`);
 });
 
 // lat, long in url
@@ -160,6 +157,7 @@ $.ajax({
 
 function loadStops() {
     let payload = {};
+    $("#stopsTable_status").html(`Loading all stops..`);
     $.ajax({
         url: `/API/loadStops`,
         type: "POST",
@@ -190,6 +188,7 @@ function mapStops(data) {
         fillOpacity: 0.7
     };
     var mapCounter = 0;
+    stopsLayer.clearLayers();
     data.forEach(e => {
         // console.log(e);
         let lat = parseFloat(e.latitude);
@@ -197,8 +196,8 @@ function mapStops(data) {
         if(!checklatlng(lat,lon)) return;
 
         let tooltipContent = `${e.id}: ${e.name}`;
-        let popupContent = `${e.id}: ${e.name}<br>
-            <button onclick="locateStop('${e.id}')">Locate in table</button>
+        let popupContent = `${e.name}<br>
+            <button onclick="locateStop('${e.id}')">Locate in table</button> <small>${e.id}</small>
         `;
         // <button onclick="loadRoutes('${e.id}')">load routes</button>
 
@@ -217,14 +216,15 @@ function addStop() {
     // 18.446,76.678 Bhatangali BANL
     var currentLocation = map.getCenter();
 
-    let payload = [{ 
-        // "id": $('#manual_id').val(), 
-        "name": $('#manual_name').val(),
-        "latitude": parseFloat(currentLocation.lat.toFixed(6)),
-        "longitude": parseFloat(currentLocation.lng.toFixed(6)),
-        "description": $('#manual_description').val(),
-        // "id": $('#manual_id').val().toUpperCase()
-    }];
+    let payload = {"data": [{ 
+            // "id": $('#manual_id').val(), 
+            "name": $('#manual_stop_name').val(),
+            "latitude": parseFloat(currentLocation.lat.toFixed(6)),
+            "longitude": parseFloat(currentLocation.lng.toFixed(6)),
+            "description": $('#manual_description').val(),
+            // "id": $('#manual_id').val().toUpperCase()
+        }]
+    };
     $('#addStop_status').html(`Sending...`);
     $.ajax({
         url: `/API/addStops`,
@@ -235,7 +235,8 @@ function addStop() {
         contentType: 'application/json',
         success: function (returndata) {
             console.log(returndata);
-            $('#addStop_status').html(`Sent.`);
+            $('#addStop_status').html(`Stop Added.`);
+            loadStops();
         },
         error: function (jqXHR, exception) {
             console.log("error:", jqXHR.responseText);
@@ -248,8 +249,13 @@ function addStop() {
 }
 
 function locateStop(id) {
+    stopsTable.deselectRow();
     stopsTable.selectRow(id);
     stopsTable.scrollToRow(id, "center", false);
+    var selectedData = stopsTable.getSelectedData();
+    let name = selectedData[0].name;
+
+    setupStopEditing(id, name);
 }
 
 // function loadRoutes(id=null) {
@@ -424,4 +430,69 @@ function setupStopEditing(id, name='') {
     $('#stopHolder').html(`<span id="id">${id}</span><br><input id="new_name" value="${name}" placeholder="stop name"><br>
             <button onclick="updateStopLocation('${id}')">Set new location</button><br>
             <span id="updateStop_status"></span><br>`);
+}
+
+function deleteStop() {
+    $('#stopsTable_status').html('Checking..');
+    let selectedData = stopsTable.getSelectedData();
+    if(!selectedData.length) {
+        console.log("Nothing selected.");
+        return;
+    }
+    let idsList = [];
+    selectedData.forEach(s => {
+        idsList.push(s.id);
+    });
+    let payload = {
+        "idsList": idsList
+    };
+    console.log(payload);
+
+    $.ajax({
+        url: `/API/diagnoseStops`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        processData: false,  // tell jQuery not to process the data
+        contentType: 'application/json',
+        success: function (returndata) {
+            $('#stopsTable_status').html(`Fetched data on the selected stop(s).`);
+            console.log(returndata);
+            let question = `Are you sure you want to delete these stop(s)?`;
+            if (returndata.patternCount && returndata.patternCount > 0) {
+                question = `Are you sure you want to delete these stops? This will affect ${returndata.patternCount} patterns in ${returndata.routeCount} routes`;
+            }
+            
+            if(confirm(question)) {
+                $('#stopsTable_status').html(`Deleting the stop(s), pls wait..`);
+                $.ajax({
+                    url: `/API/deleteStopsConfirm`,
+                    type: "POST",
+                    data : JSON.stringify(payload),
+                    cache: false,
+                    processData: false,  // tell jQuery not to process the data
+                    contentType: 'application/json',
+                    success: function (returndata2) {
+                        console.log(returndata2);
+                        if (returndata.patternCount && returndata.patternCount > 0)
+                            $('#stopsTable_status').html(`Deleted ${returndata2.stopCount} stop(s), ${returndata2.patternCount} pattern(s) in ${returndata2.routeCount} routes affected.`);
+                        else 
+                            $('#stopsTable_status').html(`Deleted ${returndata2.stopCount} stop(s)`);
+                        loadStops();
+                    },
+                    error: function (jqXHR, exception) {
+                        console.log("error:", jqXHR.responseText);
+                        $("#stopsTable_status").html(jqXHR.responseText);
+                    }
+                });
+            } else {
+                $("#stopsTable_status").html(`Canceled deletion.`);
+            }
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+            $("#stopsTable_status").html(jqXHR.responseText);
+        },
+    });
 }
