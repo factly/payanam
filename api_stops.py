@@ -4,8 +4,9 @@ import os, time
 from typing import Optional, List
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
-from fastapi import HTTPException, Header
+from fastapi import HTTPException, Header, Path
 import pandas as pd
+import jellyfish as jf # for fuzzy search
 
 from payanam_launch import app
 import commonfuncs as cf
@@ -68,7 +69,7 @@ def addStops(req: addStops_payload):
 
     # convert request body to json array, from https://stackoverflow.com/a/60845064/4355695
     requestArr = [t.__dict__ for t in req.data ]
-    print(requestArr)
+    # print(requestArr)
     df1 = pd.DataFrame(requestArr)
     # to do: validation: remove the bad ones
 
@@ -87,8 +88,9 @@ def addStops(req: addStops_payload):
             cf.logmessage("No name:",row)
             continue
         
-        icols=['space_id', 'id', 'name', 'created_on', 'created_by']
-        ivals= [f"{row['space_id']}", f"'{row['id']}'", f"'{row['name']}'", "CURRENT_TIMESTAMP", f"'{row['created_by']}'" ]
+        icols=['space_id', 'id', 'name', 'created_on', 'created_by', 'zap']
+        ivals= [f"{row['space_id']}", f"'{row['id']}'", f"'{row['name']}'", \
+            "CURRENT_TIMESTAMP", f"'{row['created_by']}'", f"'{cf.zapper(row['name'])}'" ] 
         if row.get('latitude'): 
             icols.append('latitude')
             ivals.append(f"{row['latitude']}")
@@ -162,7 +164,9 @@ def updateStops(req: updateStops_payload):
             cf.logmessage("No stop_id:",row)
             continue
         uterms = []
-        if row.get('name'): uterms.append(f"name='{row['name']}'")
+        if row.get('name'): 
+            uterms.append(f"name='{row['name']}'")
+            uterms.append(f"zap='{cf.zapper(row['name'])}'")
         if row.get('latitude'): uterms.append(f"latitude={row['latitude']}")
         if row.get('longitude'): uterms.append(f"longitude={row['longitude']}")
         if row.get('description'): uterms.append(f"description='{row['description']}'")
@@ -243,7 +247,7 @@ class diagnoseStops_payload(BaseModel):
 @app.post("/API/diagnoseStops", tags=["stops"])
 def diagnoseStops(req: diagnoseStops_payload ):
     '''
-    Diagnose stops for reconciling
+    Diagnose stops for deleting
     Fetch each stop's patterns, routes
     '''
     cf.logmessage("diagnoseStops api call")
@@ -348,4 +352,66 @@ def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
 
     return returnD
 
+
+###############
+
+class suggestMatches_payload(BaseModel):
+    name: str
+    minLat: float = -90
+    maxLat: float = 90
+    minLon: float = -180
+    maxLon: float = 180
+    fuzzy: Optional[bool] = True
+    accuracy: Optional[float] = 0.8
+    maxRows: Optional[int] = 10
+    depot: Optional[str] = None
+
+@app.post("/API/suggestMatches", tags=["stops"])
+def suggestMatches(req: suggestMatches_payload):
+    cf.logmessage("suggestMatches api call")
+
+    # # convert request body to json, from https://stackoverflow.com/a/60845064/4355695
+    # row = req.__dict__
+    # print(row)
+    # return row
+    stop_name_zap = cf.zapper(req.name)
+
+    s1 = f"""select id, zap, name, latitude, longitude from stops_master
+    where latitude between {req.minLat} and {req.maxLat}
+    and longitude between {req.minLon} and {req.maxLon}
+    """
+    dfMapped = dbconnect.makeQuery(s1, output='df')
+    cf.logmessage(f"Got {len(dfMapped)} locations within the lat-long bounds")
+    
+    # filter 1 : get name matches
+    if not req.fuzzy:
+        # direct match
+        filter1 = ( dfMapped[ dfMapped['zap'] == stop_name_zap ].copy()
+            .drop_duplicates(subset=['latitude','longitude']).copy()
+            .head(req.maxRows).copy().reset_index(drop=True)
+        )
+        # putting inside () to make mutli-line possible here
+    else:
+        # dfMapped['Fpartial'] = dfMapped['zap'].apply( lambda x: fuzz.partial_ratio(stop_name_zap,x) )
+        dfMapped['JjaroW'] = dfMapped['zap'].apply( lambda x: jf.jaro_winkler(stop_name_zap,x) )
+        
+        filter1 = ( dfMapped[dfMapped['JjaroW'] >= req.accuracy ].sort_values('JjaroW',ascending=False)
+            .drop_duplicates(subset=['latitude','longitude']).copy()
+            .head(req.maxRows).copy().reset_index(drop=True)
+        )
+
+        # below accuracy=0.8, observed its normally too much mismatch, so better to limit it.
+        
+        # skipping ranking, source and databank parts from orig payanam for now
+
+    cf.logmessage(f"{req.name}: {len(filter1)} matches found")
+
+    del filter1['zap']
+
+    returnD = { 'message': "success"}
+    returnD['hits'] = len(filter1)
+    if len(filter1):
+        returnD['data'] = filter1.to_dict(orient='records')
+
+    return returnD
 

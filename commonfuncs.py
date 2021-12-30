@@ -100,3 +100,8 @@ def getTime(timeOffset=5.5, secsOffset=0, returnObj=False):
 def assignUID(df, col='id', length=4):
     ids = [makeUID(length) for x in range(len(df))]
     return pd.Series(ids)
+
+
+# quick lambda function to zap a string
+zapper = lambda x: ''.join(e.lower() for e in str(x) if e.isalnum())
+

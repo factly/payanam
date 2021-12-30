@@ -3,3 +3,4 @@ pandas
 aiofiles
 fastapi
 uvicorn
+jellyfish

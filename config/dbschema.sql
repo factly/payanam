@@ -103,6 +103,7 @@ CREATE TABLE stops_master(
 	geopoint GEOGRAPHY(POINT) NULL,
 	stop_group_id VARCHAR(10) NULL,
 	is_disabled BOOLEAN NULL,
+	zap VARCHAR(200) NULL,
 	created_on TIMESTAMP(0) NULL,
 	created_by VARCHAR(100) NULL,
 	last_updated TIMESTAMP(0) NULL,
