@@ -365,6 +365,7 @@ class suggestMatches_payload(BaseModel):
     accuracy: Optional[float] = 0.8
     maxRows: Optional[int] = 10
     depot: Optional[str] = None
+    orig_id: Optional[str] = None
 
 @app.post("/API/suggestMatches", tags=["stops"])
 def suggestMatches(req: suggestMatches_payload):
@@ -381,6 +382,11 @@ def suggestMatches(req: suggestMatches_payload):
     and longitude between {req.minLon} and {req.maxLon}
     """
     dfMapped = dbconnect.makeQuery(s1, output='df')
+
+    if req.orig_id:
+        # remove the original stop from the matches
+        dfMapped = dfMapped[dfMapped['id']!= req.orig_id].copy()
+    
     cf.logmessage(f"Got {len(dfMapped)} locations within the lat-long bounds")
     
     # filter 1 : get name matches
@@ -393,9 +399,9 @@ def suggestMatches(req: suggestMatches_payload):
         # putting inside () to make mutli-line possible here
     else:
         # dfMapped['Fpartial'] = dfMapped['zap'].apply( lambda x: fuzz.partial_ratio(stop_name_zap,x) )
-        dfMapped['JjaroW'] = dfMapped['zap'].apply( lambda x: jf.jaro_winkler(stop_name_zap,x) )
+        dfMapped['score'] = dfMapped['zap'].apply( lambda x: jf.jaro_winkler(stop_name_zap,x) )
         
-        filter1 = ( dfMapped[dfMapped['JjaroW'] >= req.accuracy ].sort_values('JjaroW',ascending=False)
+        filter1 = ( dfMapped[dfMapped['score'] >= req.accuracy ].sort_values('score',ascending=False)
             .drop_duplicates(subset=['latitude','longitude']).copy()
             .head(req.maxRows).copy().reset_index(drop=True)
         )

@@ -17,9 +17,13 @@ var routeDrawTrigger = false;
 const stopIconSize = [20, 20];
 var globalClickLat, globalClickLon;
 var globalUnMappedStops = [];
+var globalSelectedStop = {};
+var globalStopNum = 0;
 // var patternChanged;
 
-
+// ACE editor
+var stopsEntry = ace.edit("stopsEntry");
+var global_stopsEntry_changed = false;
 
 
 // #################################
@@ -97,8 +101,11 @@ L.easyButton('<img src="lib/route.svg" width="100%" title="toggle route lines" d
 
 L.control.custom({
     position: 'bottomleft',
-    content: `<p></p>
-    `,
+    content: `<div id="panel">
+    Stop: <span id="stopInfo">select one</span> <span id="unmappedHolder"></span><br>
+    <a href="javascript:{}" onclick="loadSuggestions()">Load suggestions</a> within visible area.<br>
+    <div id="suggestions"></div>
+    </div>`,
     classes: `divOnMap1`
 }).addTo(map);
 
@@ -159,6 +166,10 @@ $(document).ready(function () {
         copyFromPattern($(this).val());
     });
 
+    //ACE editor : listen for changes
+    stopsEntry.session.on('change', function(delta) {
+        global_stopsEntry_changed = true;
+    });
 
 });
 
@@ -509,6 +520,9 @@ function savePattern() {
 function resetPattern() {
     let pid = $('#pattern_chosen').val();
     loadPattern(pid);
+    $('#stopInfo').html(`select one`);
+    $('#suggestions').html(``);
+    matchesLayer.clearLayers();
 }
 
 
@@ -566,7 +580,7 @@ function processAllStops() {
             let tooltipContent = `${e.name}<br>id: ${e.id}`;
             let popupContent = `${e.name}<br>
                 id: ${e.id}<br>
-                <button onclick="insertStopInPattern('${e.id}')">Add to pattern</button> at <input class="narrow" id="stopPosition">`;
+                <b><a href="javascript:{}" onclick="insertStopInPattern('${e.id}')">Add to pattern</a></b> at <input class="narrow" id="stopPosition">`;
             let marker = L.circleMarker([lat,lon], allStopsMarkerOptions)
                 .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
                 .bindPopup(popupContent);
@@ -586,8 +600,8 @@ function processAllStops() {
 
     $('#stopPicker').select2({
         // data: returndata.results,
-        placeholder: "Choose a Stop",
-        width: "400px",
+        placeholder: "Add a Stop",
+        width: "100%",
         allowClear: true
     });
 
@@ -656,15 +670,19 @@ function makeStopDiv(id, name) {
     if(name.length > 40) printname = name.substring(0,40) + '..';
 
     let sortableContent = `<div class="list-group-item stop_${id}" data-id="${id}" title="${name}">
-    <span class="stopNum ${id}"></span>. ${printname} <small>${id}<span class="unmapped ${id}"></span></small>
-        <div class="timeOffsetHolder"><small>
-            <input class="narrow" class="timeOffset ${id}">min
-        </small></div>
+    <div onclick="clickPatternStop('${id}')"><span class="stopNum ${id}"></span>. ${printname} 
+    <small>${id}<span class="unmapped ${id}"></span></small></div>
+        
        
         <div class="removeStopButton" onclick="removeStop('${id}')">x</div>
         </div>`;
     // close button code from https://stackoverflow.com/a/33336458/4355695
     return sortableContent;
+
+    /* <div class="timeOffsetHolder"><small>
+            <input class="narrow" class="timeOffset ${id}">min
+        </small></div>
+    */
 }
 
 function reNumber() {
@@ -726,6 +744,70 @@ function copyFromPattern(pid) {
 }
 
 
+function addStopsByNameOpenModal() {
+    // do other checks as needed
+    $('#modal_nameStops').modal('show');
+    
+}
+
+function addStopsByName() {
+    console.log("addStopsByName");
+    let names = [];
+    let content = stopsEntry.getValue().split('\n');
+    content.forEach(x => {
+        if(x.length) {
+            if(x.length >= 3) {
+                names.push(x);
+            } else {
+                badnames.push(x);
+            }
+        }
+    });
+
+    console.log(names);
+    if(badnames.length) {
+        $('#nameStops_status').html(`Note: Dropping`)
+    }
+    return;
+    let payload = { "data": []
+
+    };
+    // stopsEntry
+    $.ajax({
+        url: `/API/addStops`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            // console.log("pattern_stops:",returndata.pattern_stops);
+            if(!returndata.pattern_stops.length) {
+                console.log("No stops in that pattern.");
+                $('#savePattern_status').html(`No stops in the other pattern.`);
+                return;
+            }
+            if (!confirm(`Are you sure you want to bring in ${returndata.pattern_stops.length} stops from another pattern?`)) return;
+            
+            returndata.pattern_stops.forEach((r,N) => {
+                let sortableContent = makeStopDiv(r.stop_id, r.name);
+                $('#stops_order_holder').append(sortableContent);
+            });
+            $('#savePattern_status').html(`Stops from ${pid} added.`);
+
+            reNumber();
+            routeLines(update=true);
+            mapStops();
+            $('#modal_nameStops').modal('hide');
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#savePattern_status').html(jqXHR.responseText);
+        }
+    });
+    // $('#modal_newStop').modal('hide');
+
+}
 // #################################
 // ROUTE ON MAP
 
@@ -785,7 +867,6 @@ function mapStops() {
                 fillOpacity: 0.8
             };
 
-            // let marker = L.circleMarker([srow.latitude,srow.longitude], circleMarkerOptions)
             let marker = L.marker([srow.latitude,srow.longitude], { 
                 icon: L.divIcon({
                     className: `stop-divicon`,
@@ -794,7 +875,10 @@ function mapStops() {
                 }) 
             })
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
-            .bindPopup(popupContent);
+            .bindPopup(popupContent)
+            .on('click', e=> {
+                clickPatternStop(stop_ids[i-1]);
+            });
             marker.properties = srow;
             marker.properties['id'] = stop_ids[i-1];
             marker.addTo(stopsLayer);
@@ -966,6 +1050,122 @@ map.addControl( new L.Control.Search({
 );
 
 
+// #################################
+// SUGGESTIONS
+
+function clickPatternStop(stop_id) {
+    if(!allStopsLoadedFlag) return;
+    $('#suggestions').html(``);
+    matchesLayer.clearLayers();
+
+    globalSelectedStop = allStopsi[stop_id];
+    console.log("clickPatternStop:",globalSelectedStop);
+    $('#stopInfo').html(globalSelectedStop.name);
+    if(globalSelectedStop.latitude) {
+        map.panTo([globalSelectedStop.latitude, globalSelectedStop.longitude]);
+        $('#unmappedHolder').html(``);
+    } else {
+        $('#unmappedHolder').html(`unmapped`);
+
+    }
+
+    // also find out which number in the pattern this is
+    let pattern = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    globalStopNum = pattern.findIndex(p => {return p == stop_id});
+    // findIndex: https://www.w3schools.com/jsref/jsref_findindex.asp
+    if(globalStopNum < 0) globalStopNum=0; // if not found, assume zero
+    globalStopNum ++;
+    console.log("globalStopNum:",globalStopNum);
+
+}
+
+function loadSuggestions() {
+    console.log("loadSuggestions:",globalSelectedStop);
+    if(!globalSelectedStop.name) return;
+    let bounds = map.getBounds();
+    let payload = {
+        "name": globalSelectedStop.name,
+        "minLat": bounds._southWest.lat, 
+        "maxLat": bounds._northEast.lat, 
+        "minLon": bounds._southWest.lng, 
+        "maxLon": bounds._northEast.lng, 
+        "fuzzy": true,
+        "accuracy": 0.7,
+        "maxRows": 10,
+        "depot": $('#route_depot').val()
+    };
+    console.log(payload);
+    $('#suggestions').html(`Loading..`);
+    
+    $.ajax({
+        url: `/API/suggestMatches`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            if(!returndata.hits) return;
+
+            let suggestionsHTML=``;
+            matchesLayer.clearLayers();
+            returndata.data.forEach(s => {
+                let tooltipContent = `${s.name}`;
+                let popupContent = `Suggested stop: <b>${s.name}</b><br>
+                id: ${s.id}, similarity score: ${s.score.toFixed(3)}<br>
+                <b><a href="javascript:{}" onclick=replacePatternStop('${globalSelectedStop.id}','${s.id}')>Click here</a></b>
+                to replace current stop (${globalSelectedStop.id})<br> 
+                in the pattern at position ${globalStopNum}
+                `;
+                let suggestMarker = L.circleMarker([s.latitude,s.longitude], {
+                    renderer: myRenderer,
+                    radius: 4,
+                    fillColor: 'blue',
+                    color: 'black',
+                    weight: 0.5,
+                    opacity: 1,
+                    fillOpacity: 0.5
+                }).bindTooltip(tooltipContent, {
+                    direction:'top', 
+                    offset: [0,-5]
+                }).bindPopup(popupContent);
+                suggestMarker.addTo(matchesLayer);
+
+                suggestionsHTML += `<span class="border" onclick="map.panTo([${s.latitude},${s.longitude}])" class="suggestionPill">${s.name}</span>&nbsp;|&nbsp;`;
+
+            });
+            // console.log(suggestionsHTML);
+            suggestionsHTML += `${returndata.hits} suggestions found`;
+            $('#suggestions').html( suggestionsHTML );
+            if (!map.hasLayer(matchesLayer)) map.addLayer(matchesLayer);
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#suggestions').html(jqXHR.responseText);
+        }
+    });
+
+}
+
+function replacePatternStop(orig_id, new_id) {
+    console.log("replacePatternStop:",orig_id, new_id);
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    
+    console.log(`Old stop: ${stop_ids[globalStopNum-1]}, checking: ${orig_id == stop_ids[globalStopNum-1]}`);
+    stop_ids[globalStopNum-1] = new_id;
+    console.log(`New stop: ${stop_ids[globalStopNum-1]}`);
+    // console.log(stop_ids);
+    let sortableContent = '';
+    stop_ids.forEach((id,N) => {
+        sortableContent += makeStopDiv(id, allStopsi[id].name);
+    });
+    $('#stops_order_holder').html(sortableContent);
+    reNumber();
+    routeLines(update=true);
+    mapStops();
+
+    map.closePopup(); // close popup
+
+}
 // ############################################
 // TIMINGS
 
@@ -976,4 +1176,5 @@ function fetchTimings(pattern_id) {
 
     // to do: in case pattern changes, hide the timings section and show a text saying to save the pattern to DB to proceed with timings
 }
+
 

@@ -35,6 +35,7 @@
 <script src="lib/leaflet-hash.min.js"></script>
 <script src="lib/leaflet.contextmenu.min.js"></script>
 <script src="lib/leaflet-search.min.js"></script>
+<script src="lib/ace.js" type="text/javascript" charset="utf-8"></script>
 
 <!-- Select2 - https://select2.org/getting-started/installation -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -133,11 +134,40 @@ width: 100%;
     background: rgba(255, 255, 255, 0.8);
     /*font-size: 14px;*/
     border-radius: 5px;
-    box-shadow:0px 0px 5px black; 
+    box-shadow:0px 0px 5px black;
+    min-height: 100px;
+    max-width: 500px;
+    min-width: 200px;
+    overflow-y: scroll;
 }
 
 .unmapped {
     color:  red;
+}
+
+#stopInfo {
+    font-size: 1.3em;
+    font-weight: bold;
+}
+
+.suggestionPill {
+    font-size: 1em;
+    border: 1px dimgray;
+}
+
+#suggestions {
+    font-size: 1.2em;
+}
+
+/* ACE Editor - numbered lines */
+.stopsList {
+    height: 60vh;
+    font-size: 1.2em;
+    font-weight: 400;
+    width: 95%;
+}
+.ace_gutter-cell {
+    color: rgb(155, 155, 155);
 }
 
 </style>
@@ -199,10 +229,17 @@ width: 100%;
             <div class="list-group-item" id="STOP2">STOP2</div> -->
         </div>
         <br>
-        <p>Add a stop: <select id="stopPicker">
-            <option value="">Choose a stop</option>
-        </select>
-        </p>
+        <div class="row">
+            <div class="col-md-8">
+                <select id="stopPicker">
+                    <option value="">Loading..</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <a href="javascript:{}" onclick="addStopsByNameOpenModal()">Add new stops by name</a>
+            </div>
+        </div>
+        <br>
         <div class="row">
             <div class="col-md-4">
                 <button class="btn btn-sm btn-primary" onclick="savePattern()">Save this Pattern</button>
@@ -274,11 +311,11 @@ width: 100%;
 
 
 <!-- Modal map unmapped stop from map-->
-<div class="modal fade" id="modal_UnMappedStop" tabindex="-1" aria-labelledby="modal1Label" aria-hidden="true">
+<div class="modal fade" id="modal_UnMappedStop" tabindex="-1" aria-labelledby="modal2Label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modal1Label">Map and Unmapped Stop</h5>
+                <h5 class="modal-title" id="modal2Label">Map an Unmapped Stop</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
                 </button>
@@ -288,15 +325,42 @@ width: 100%;
                     <p>Choose: <select id="select_unmapped_stop"></select></p>
                 </div>
             </div>      
-        <div class="modal-footer">
-            <span id="route_UnMappedStop_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
-            <button type="button" class="btn btn-success btn-sm" onclick="route_UnMappedStop()">
-            Map this Stop</button><!-- data-dismiss="modal"-->
+            <div class="modal-footer">
+                <span id="route_UnMappedStop_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
+                <button type="button" class="btn btn-success btn-sm" onclick="route_UnMappedStop()">
+                Map this Stop</button><!-- data-dismiss="modal"-->
             
-        </div>
+            </div>
         </div>
     </div>
 </div>
+
+
+<!-- Add Stops by name, unmapped -->
+<div class="modal fade" id="modal_nameStops" tabindex="-1" aria-labelledby="modal3Label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal3Label">Add stops by name</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="container-fluid">
+                    <p>Enter the stop names below, one stop per line.</p>
+                    <div id="stopsEntry" class="stopsList" title="One stop per line"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <span id="nameStops_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
+                    <button type="button" class="btn btn-success btn-sm" onclick="addStopsByName()">
+                    Add these Stops to the Pattern</button><!-- data-dismiss="modal"-->
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script src="js/common.js"></script>
 <script src="js/routes.js"></script>
