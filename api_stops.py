@@ -71,8 +71,12 @@ def addStops(req: addStops_payload):
     requestArr = [t.__dict__ for t in req.data ]
     # print(requestArr)
     df1 = pd.DataFrame(requestArr)
+
     # to do: validation: remove the bad ones
 
+    # remove duplicates
+    df1 = df1.drop_duplicates('name').copy()
+    
     df1['space_id'] = int(os.environ.get('SPACE_ID',1))
     df1['id'] = cf.assignUID(df1)
     
@@ -115,7 +119,7 @@ def addStops(req: addStops_payload):
     returnD = { 'message': "success", "num_added": 0, "num_not_added":0, "added":[], "not_added":[] }
     if len(added):
         returnD['num_added'] = len(added)
-        returnD['added'] = [x['id'] for x in added]
+        returnD['added'] = [{"stop_id":x['id'], "name":x['name']} for x in added]
     if len(not_added):
         returnD['num_not_added'] = len(not_added)
         returnD['not_added'] = [x['id'] for x in not_added]

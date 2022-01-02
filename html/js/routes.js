@@ -355,12 +355,14 @@ function loadPattern(pid) {
         success: function (returndata) {
             // console.log("pattern_stops:",returndata.pattern_stops);
             let sortableContent = '';
+            let notMapped = 0;
             returndata.pattern_stops.forEach((r,N) => {
                 sortableContent += makeStopDiv(r.stop_id, r.name);
+                if(!r.latitude) notMapped ++;
             });
             $('#stops_order_holder').html(sortableContent);
             reNumber();
-            $('#savePattern_status').html(`Pattern loaded.`);
+            $('#savePattern_status').html(`Pattern loaded. ${returndata.pattern_stops.length} stops total, ${notMapped} not mapped yet.`);
 
             // map it
             if(allStopsLoadedFlag) {
@@ -620,11 +622,12 @@ function processAllStops() {
 
 }
 
-function addStop2Pattern(stop_id) {
+function addStop2Pattern(stop_id, redraw=true) {
     console.log("addStop2Pattern",stop_id);
     let stopRow = allStopsi[stop_id];
     let sortableContent = makeStopDiv(stop_id, stopRow.name);
     $('#stops_order_holder').append(sortableContent);
+    if(!redraw) return;
     reNumber();
     routeLines(update=true);
     mapStops();
@@ -746,18 +749,21 @@ function copyFromPattern(pid) {
 
 function addStopsByNameOpenModal() {
     // do other checks as needed
+    stopsEntry.setValue(``);
+    $('#nameStops_status').html(``);
     $('#modal_nameStops').modal('show');
     
 }
 
 function addStopsByName() {
     console.log("addStopsByName");
-    let names = [];
+    let names = [], badnames=[];
     let content = stopsEntry.getValue().split('\n');
     content.forEach(x => {
+        x = x.trim();
         if(x.length) {
             if(x.length >= 3) {
-                names.push(x);
+                names.push({"name": x});
             } else {
                 badnames.push(x);
             }
@@ -765,12 +771,21 @@ function addStopsByName() {
     });
 
     console.log(names);
+    let status = ``;
     if(badnames.length) {
-        $('#nameStops_status').html(`Note: Dropping`)
+        status += `Note: Dropping these bad names: ${badnames.join(', ')}. `;
     }
-    return;
-    let payload = { "data": []
+    if(! names.length) {
+        status += `No valid stop names to add.`
+    } else {
+        status += `Adding ${names.length} stop names to DB..`;
+    }
+    $('#nameStops_status').html(status);
 
+    if(! names.length) return;
+
+    let payload = { 
+        "data": names
     };
     // stopsEntry
     $.ajax({
@@ -780,29 +795,31 @@ function addStopsByName() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            // console.log("pattern_stops:",returndata.pattern_stops);
-            if(!returndata.pattern_stops.length) {
-                console.log("No stops in that pattern.");
-                $('#savePattern_status').html(`No stops in the other pattern.`);
-                return;
-            }
-            if (!confirm(`Are you sure you want to bring in ${returndata.pattern_stops.length} stops from another pattern?`)) return;
             
-            returndata.pattern_stops.forEach((r,N) => {
-                let sortableContent = makeStopDiv(r.stop_id, r.name);
-                $('#stops_order_holder').append(sortableContent);
-            });
-            $('#savePattern_status').html(`Stops from ${pid} added.`);
+            console.log(returndata);
 
+            returndata.added.forEach((row,N) => {
+                console.log(row);
+                // add this stop to global allStops and allStopsi:
+                allStopsi[row.stop_id] = { name: row.name, id: row.stop_id };
+                allStops.push({ id: row.stop_id, name: name });
+
+                // add this stop to the pattern
+                addStop2Pattern(row.stop_id, redraw=false);
+
+            });
             reNumber();
             routeLines(update=true);
             mapStops();
+            
+            $('#nameStops_status').html(`Added`);
+            $('#savePattern_status').html(`${names.length} new stop names added to pattern, pls map them`);
             $('#modal_nameStops').modal('hide');
-
+            
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
-            $('#savePattern_status').html(jqXHR.responseText);
+            $('#nameStops_status').html(jqXHR.responseText);
         }
     });
     // $('#modal_newStop').modal('hide');
@@ -932,9 +949,9 @@ function route_newStop() {
         success: function (returndata) {
             // now add it to the present pattern
             let pattern_id = $('#pattern_chosen').val();
-            let stop_id = returndata.added[0];
+            let stop_id = returndata.added[0]['stop_id'];
             // add this stop to global allStops and allStopsi:
-            allStopsi[stop_id] = {name: name, latitude: globalClickLat, 
+            allStopsi[stop_id] = {id: stop_id, name: name, latitude: globalClickLat, 
                 longitude: globalClickLon };
             allStops.push({id: stop_id, name: name, latitude: globalClickLat, 
                 longitude: globalClickLon});
@@ -1104,8 +1121,11 @@ function loadSuggestions() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            if(!returndata.hits) return;
-
+            if(!returndata.hits) {
+                $('#suggestions').html(`Could not find any suggestions. Try loosening the search criteria in settings.`);
+                return;
+            }
+            
             let suggestionsHTML=``;
             matchesLayer.clearLayers();
             returndata.data.forEach(s => {
@@ -1153,7 +1173,8 @@ function replacePatternStop(orig_id, new_id) {
     console.log(`Old stop: ${stop_ids[globalStopNum-1]}, checking: ${orig_id == stop_ids[globalStopNum-1]}`);
     stop_ids[globalStopNum-1] = new_id;
     console.log(`New stop: ${stop_ids[globalStopNum-1]}`);
-    // console.log(stop_ids);
+    
+    // re-making the pattern
     let sortableContent = '';
     stop_ids.forEach((id,N) => {
         sortableContent += makeStopDiv(id, allStopsi[id].name);

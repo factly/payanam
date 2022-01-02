@@ -141,7 +141,7 @@ width: 100%;
     overflow-y: scroll;
 }
 
-.unmapped {
+.unmapped, #unmappedHolder {
     color:  red;
 }
 
@@ -161,7 +161,7 @@ width: 100%;
 
 /* ACE Editor - numbered lines */
 .stopsList {
-    height: 60vh;
+    height: 40vh;
     font-size: 1.2em;
     font-weight: 400;
     width: 95%;
@@ -348,7 +348,7 @@ width: 100%;
             </div>
             <div class="modal-body">
                 <div class="container-fluid">
-                    <p>Enter the stop names below, one stop per line.</p>
+                    <p>Enter the stop names below, one stop per line. (min 3 chars)</p>
                     <div id="stopsEntry" class="stopsList" title="One stop per line"></div>
                 </div>
             </div>
