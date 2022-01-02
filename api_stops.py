@@ -36,7 +36,7 @@ def loadStops(req: loadStops_payload):
     if len(df):
         returnD['stops'] = df.to_dict(orient='records')
         if req.indexed:
-            returnD['indexed'] = df.set_index('id').to_dict(orient='index')
+            returnD['indexed'] = df.set_index('id', drop=False).to_dict(orient='index')
     else:
         returnD['stops'] = []
         if req.indexed:
