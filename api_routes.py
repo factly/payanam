@@ -21,7 +21,11 @@ class loadRoutesList_payload(BaseModel):
 @app.post("/API/loadRoutesList", tags=["routes"])
 def loadRoutesList(req: loadRoutesList_payload):
     cf.logmessage("loadRoutes api call")
-    s1 = f"select id, name, depot, description from routes order by name"
+    space_id = int(os.environ.get('SPACE_ID',1))
+
+    s1 = f"""select id, name, depot, description from routes 
+    where space_id = {space_id}
+    order by name"""
     df = dbconnect.makeQuery(s1, output='df',keepCols=True)
     df.rename(columns={'name':'text'}, inplace=True)
 
@@ -67,7 +71,7 @@ def addRoute(req: addRoute_payload):
     else:
         depotHolder = "NULL"
 
-    global space_id
+    space_id = int(os.environ.get('SPACE_ID',1))
     returnD = { "message": "success" }
 
     if not reqD.get('route_id'):
@@ -120,13 +124,18 @@ def loadRouteDetails(req: loadRouteDetails_payload):
     cf.logmessage("loadRouteDetails api call")
     route_id = req.route_id
     returnD = { "message": "success"}
-    
-    s1 = f"select * from routes where id='{route_id}'"
+    space_id = int(os.environ.get('SPACE_ID',1))
+
+    s1 = f"""select * from routes 
+    where space_id = {space_id}
+    and id='{route_id}'"""
     returnD['route'] = dbconnect.makeQuery(s1, output='oneJson')
     if not returnD['route'].get('name') :
         raise HTTPException(status_code=400, detail="Could not find route for given id")
 
-    s2 = f"select * from patterns where route_id='{route_id}' order by sequence"
+    s2 = f"""select * from patterns 
+    where space_id = {space_id}
+    and route_id='{route_id}' order by sequence"""
     returnD['patterns'] = dbconnect.makeQuery(s2, output='list')
     if not len(returnD['patterns']):
         return returnD

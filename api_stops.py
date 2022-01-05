@@ -30,7 +30,8 @@ def loadStops(req: loadStops_payload):
     else: 
         cols = ','.join(['id','name','description','latitude','longitude','stop_group_id','created_on','created_by','last_updated','modified_by'])
     
-    s1 = f"select {cols} from stops_master"
+    space_id = int(os.environ.get('SPACE_ID',1))
+    s1 = f"select {cols} from stops_master where space_id = {space_id}"
     df = dbconnect.makeQuery(s1, output='df', fillna=False)
     returnD = { 'message': "success"}
     if len(df):
@@ -76,7 +77,7 @@ def addStops(req: addStops_payload):
 
     # remove duplicates
     df1 = df1.drop_duplicates('name').copy()
-    
+
     df1['space_id'] = int(os.environ.get('SPACE_ID',1))
     df1['id'] = cf.assignUID(df1)
     
@@ -224,8 +225,10 @@ def searchStops(q: Optional[str] = None ):
     for working with https://opengeo.tech/maps/leaflet-search/examples/ajax-jquery.html
     response should be like: [{"loc":[41.57573,13.002411],"title":"black"}]
     """
+    space_id = int(os.environ.get('SPACE_ID',1))
     s1 = f"""select name, latitude, longitude from stops_master
-    where name ilike '%{q}%'
+    where space_id = {space_id}
+    and name ilike '%{q}%'
     and latitude is not null
     and longitude is not null
     order by name
@@ -299,23 +302,30 @@ class deleteStopsConfirm_payload(BaseModel):
 def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
     cf.logmessage("deleteStopsConfirm api call")
     idsListSQL = cf.quoteNcomma(req.idsList)
+    space_id = int(os.environ.get('SPACE_ID',1))
 
     returnD = { "message": "success" }
 
     # find the patterns
-    s1 = f"select distinct pattern_id from pattern_stops where stop_id in ({idsListSQL})"
+    s1 = f"""select distinct pattern_id from pattern_stops 
+    where space_id = {space_id}
+    and stop_id in ({idsListSQL})"""
     patternsList = dbconnect.makeQuery(s1, output='column')
 
     if len(patternsList):
 
         # find which routes affected
         patternsListSQL = cf.quoteNcomma(patternsList)
-        s4 = f"select distinct route_id from patterns where id in ({patternsListSQL})"
+        s4 = f"""select distinct route_id from patterns 
+        where space_id = {space_id}
+        and id in ({patternsListSQL})"""
         routesList = dbconnect.makeQuery(s4, output='column')
         returnD['routeCount'] = len(routesList)
 
         # delete stop's entries from pattern_stops
-        d1 = f"delete from pattern_stops where stop_id in ({idsListSQL})"
+        d1 = f"""delete from pattern_stops 
+        where space_id = {space_id}
+        and stop_id in ({idsListSQL})"""
         pattern_deleted = dbconnect.execSQL(d1)
         returnD['patternCount'] = pattern_deleted
 
@@ -323,7 +333,8 @@ def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
 
         for pN, pattern_id in enumerate(patternsList):
             s2 = f"""select id, stop_id, stop_sequence from pattern_stops 
-            where pattern_id='{pattern_id}'
+            where space_id = {space_id}
+            and pattern_id='{pattern_id}'
             order by stop_sequence
             """
             pattern_stops = dbconnect.makeQuery(s2, output='list', fillna=False)
@@ -379,10 +390,12 @@ def suggestMatches(req: suggestMatches_payload):
     # row = req.__dict__
     # print(row)
     # return row
+    space_id = int(os.environ.get('SPACE_ID',1))
     stop_name_zap = cf.zapper(req.name)
 
     s1 = f"""select id, zap, name, latitude, longitude from stops_master
-    where latitude between {req.minLat} and {req.maxLat}
+    where space_id = {space_id}
+    and latitude between {req.minLat} and {req.maxLat}
     and longitude between {req.minLon} and {req.maxLon}
     """
     dfMapped = dbconnect.makeQuery(s1, output='df')

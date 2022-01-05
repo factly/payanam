@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi import HTTPException, Header
 import pandas as pd
+import os
 
 from payanam_launch import app
 import commonfuncs as cf
@@ -20,7 +21,10 @@ class loadConfig_payload(BaseModel):
 @app.post("/API/loadConfig", tags=["config"]) 
 def loadconfig(req: loadConfig_payload):
     cf.logmessage("loadConfig api call")
-    s1 = f"select config_key, config_value from config"
+    space_id = int(os.environ.get('SPACE_ID',1))
+
+    s1 = f"""select config_key, config_value from config
+    where space_id = {space_id}"""
     df = dbconnect.makeQuery(s1, output='df')
     returnD = { 'message': "success"}
     if len(df):

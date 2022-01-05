@@ -67,7 +67,9 @@ CREATE TABLE trips(
 	start_time TIME(0) NULL,
 	end_time TIME(0) NULL,
 	days VARCHAR(100) NULL,
-	service_id VARCHAR(10) NULL
+	service_id VARCHAR(10) NULL,
+	last_updated TIMESTAMP(0) NULL,
+	modified_by VARCHAR(100) NULL
 );
 
 
@@ -141,7 +143,7 @@ CREATE TABLE route_groups(
 
 DROP TABLE IF EXISTS config;
 CREATE TABLE config(
-space_id INT NULL,
+	space_id INT NULL,
 	id VARCHAR(10) NOT NULL PRIMARY KEY,
 	config_key VARCHAR(100) NULL,
 	config_value VARCHAR(100) NULL,

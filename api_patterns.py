@@ -9,6 +9,8 @@ import os
 from payanam_launch import app
 import commonfuncs as cf
 import dbconnect
+from api_timings import updateTimingsForPattern
+
 
 space_id = int(os.environ.get('SPACE_ID',1))
 
@@ -24,8 +26,11 @@ class loadpatterns_payload(BaseModel):
 def loadpatterns(req: loadpatterns_payload):
     cf.logmessage("loadpatterns api call")
     route_id = req.route_id
+    space_id = int(os.environ.get('SPACE_ID',1))
 
-    s1 = f"select * from patterns where route_id = '{route_id}'"
+    s1 = f"""select * from patterns 
+    where space_id = {space_id}
+    and route_id = '{route_id}'"""
     df = dbconnect.makeQuery(s1, output='df')
     returnD = { 'message': "success"}
     if len(df):
@@ -36,6 +41,7 @@ def loadpatterns(req: loadpatterns_payload):
     return returnD
 
 #############
+
 class updatePatternsOrder_payload(BaseModel):
     sequence: List[str]
 
@@ -69,13 +75,23 @@ class deletePatterns_payload(BaseModel):
 @app.post("/API/deletePatterns", tags=["patterns"])
 def deletePatterns(req: deletePatterns_payload):
     cf.logmessage("deletePatterns api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
     patternsSQL = cf.quoteNcomma(req.patterns)
-    d1 = f"delete from pattern_stops where pattern_id in ({patternsSQL})"
-    d2 = f"delete from patterns where id in ({patternsSQL})"
+    d1 = f"delete from pattern_stops where space_id={space_id} and pattern_id in ({patternsSQL})"
+    d2 = f"delete from patterns where space_id={space_id} and where id in ({patternsSQL})"
     
     d1Count = dbconnect.execSQL(d1)
     d2Count = dbconnect.execSQL(d2)
-    returnD = { 'message': "success", "pattern_stops_deleted": d1Count, "patterns_deleted": d2Count }
+
+    # also trips and timings under the pattern
+    d3 = f"delete from stop_times where space_id={space_id} and where trip_id in (select id from trips where pattern_id in ({patternsSQL}) )"
+    d4 = f"delete from trips where where space_id={space_id} and pattern_id in ({patternsSQL})"
+    d3Count = dbconnect.execSQL(d3)
+    d4Count = dbconnect.execSQL(d4)
+    
+    returnD = { 'message': "success", "pattern_stops_deleted": d1Count, "patterns_deleted": d2Count,
+        "trips_deleted": d4Count, "stop_times_deleted": d4Count }
+    cf.logmessage(returnD)
     return returnD
 
 
@@ -88,14 +104,16 @@ class addPattern_payload(BaseModel):
 @app.post("/API/addPattern", tags=["patterns"])
 def addPattern(req: addPattern_payload):
     cf.logmessage("addPattern api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
 
-    # check if already existig
-    s1 = f"select name from patterns where route_id='{req.route_id}' order by sequence"
+    # check if already existing
+    s1 = f"""select name from patterns 
+    where space_id = {space_id}
+    and route_id='{req.route_id}' order by sequence"""
     existingPatterns = dbconnect.makeQuery(s1, output='column')
     if req.name in existingPatterns:
         raise HTTPException(status_code=400, detail="Pattern already exists")
 
-    global space_id
     returnD = { "message": "success" }
 
     pid1 = cf.makeUID()
@@ -119,17 +137,20 @@ class editPattern_payload(BaseModel):
 @app.post("/API/editPattern", tags=["patterns"])
 def editPattern(req: editPattern_payload):
     cf.logmessage("editPattern api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
 
     # find if existing
     s1 = f"""select * from patterns
-    where id='{req.pattern_id}'
+    where space_id = {space_id}
+    and id='{req.pattern_id}'
     """
     existingPattern = dbconnect.makeQuery(s1, output='oneJson')
     if not len(existingPattern):
         raise HTTPException(status_code=400, detail="Could not remove existing sequence")
 
     s2 = f"""select * from pattern_stops 
-    where pattern_id='{req.pattern_id}'
+    where space_id = {space_id}
+    and pattern_id='{req.pattern_id}'
     order by stop_sequence
     """
     existingPatternStops = dbconnect.makeQuery(s2, output='df')
@@ -154,7 +175,6 @@ def editPattern(req: editPattern_payload):
     df['stop_sequence'] = list(range(1,len(df)+1))
     print("new:"); print(df)
     
-    global space_id
     df['space_id'] = space_id
     df['pattern_id'] = req.pattern_id
     
@@ -176,6 +196,10 @@ def editPattern(req: editPattern_payload):
         "newCount": len(df)
     }
 
+    # update timings entries
+    returnD['numTrips'], returnD['timings_added'], returnD['timings_removed'] = updateTimingsForPattern(req.pattern_id, len(df))
+    
+    cf.logmessage(returnD)
     return returnD
 
 
@@ -187,13 +211,15 @@ class loadPattern_payload(BaseModel):
 @app.post("/API/loadPattern", tags=["patterns"])
 def loadPattern(req: loadPattern_payload):
     cf.logmessage("loadPattern api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
     returnD = { "message": "success"}
 
     # note: currently, frontend isn't using the lat-longs here, can make it use them later.
     s1 = f"""select t1.*, t2.name, t2.latitude, t2.longitude from pattern_stops as t1 
     left join stops_master as t2 
     on t1.stop_id = t2.id 
-    where t1.pattern_id = '{req.pattern_id}'
+    where t1.space_id = {space_id}
+    and t1.pattern_id = '{req.pattern_id}'
     order by t1.stop_sequence
     """
     df1 = dbconnect.makeQuery(s1, output='df', keepCols=True)

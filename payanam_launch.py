@@ -26,6 +26,7 @@ import api_routes
 import api_patterns
 import api_config
 import api_gtfs
+import api_timings
 
 app.mount("/", StaticFiles(directory="html", html = True), name="static")
 # https://fastapi.tiangolo.com/tutorial/static-files/

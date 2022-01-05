@@ -19,11 +19,11 @@ var globalClickLat, globalClickLon;
 var globalUnMappedStops = [];
 var globalSelectedStop = {};
 var globalStopNum = 0;
-// var patternChanged;
+var patternChanged = false;
 
 // ACE editor
 var stopsEntry = ace.edit("stopsEntry");
-var global_stopsEntry_changed = false;
+// var global_stopsEntry_changed = false;
 
 
 // #################################
@@ -138,7 +138,7 @@ $(document).ready(function () {
         ghostClass: 'sortable-ghost',
         dataIdAttr: 'data-id',
         onChange: function(/**Event*/evt) {
-            //console.log(evt.newIndex);
+            patternChanged = true;
             reNumber();
             routeLines(update=true);
             mapStops();
@@ -166,10 +166,10 @@ $(document).ready(function () {
         copyFromPattern($(this).val());
     });
 
-    //ACE editor : listen for changes
-    stopsEntry.session.on('change', function(delta) {
-        global_stopsEntry_changed = true;
-    });
+    // //ACE editor : listen for changes
+    // stopsEntry.session.on('change', function(delta) {
+    //     global_stopsEntry_changed = true;
+    // });
 
 });
 
@@ -373,6 +373,7 @@ function loadPattern(pid) {
                 console.log("Stops data not loaded yet so waiting before drawing pattern but setting the routeDrawTrigger trigger");
                 routeDrawTrigger = true;
             }
+            patternChanged = false;
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -473,19 +474,11 @@ function addPattern() {
         contentType: 'application/json',
         success: function (returndata) {
             console.log(returndata);
-            $('#pattern_status').html(`Patterns re-ordered.`);
             let pid = returndata['id'];
-
+            
             // reload the route, and pass in this id so that it becomes the default selected one.
             loadRouteDetails(route_id, pattern_id=pid);
-
-            // // add the pattern to patterns List and trigger selecting it - avoid having to make another api call
-            // // https://select2.org/programmatic-control/add-select-clear-items#create-if-not-exists
-            // var newOptionP = new Option(payload['name'], pid, true, true);
-            // $('#pattern_chosen').append(newOptionP).trigger('change');
-            // loadPattern(pid);
             $('#pattern_status').html(`Created new pattern, id: ${returndata['id']}`);
-
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -511,6 +504,7 @@ function savePattern() {
         success: function (returndata) {
             console.log(returndata);
             $('#savePattern_status').html(`Pattern Saved.`);
+            patternChanged = false;
         },
         error: function (jqXHR, exception) {
             console.log("error:", jqXHR.responseText);
@@ -525,6 +519,7 @@ function resetPattern() {
     $('#stopInfo').html(`select one`);
     $('#suggestions').html(``);
     matchesLayer.clearLayers();
+    patternChanged = false;
 }
 
 
@@ -632,6 +627,7 @@ function addStop2Pattern(stop_id, redraw=true) {
     routeLines(update=true);
     mapStops();
     map.closePopup(); // close popup
+    patternChanged = true;
 }
 
 function insertStopInPattern(stop_id) {
@@ -656,6 +652,7 @@ function insertStopInPattern(stop_id) {
 
     $('#stopPosition').val('');
     map.closePopup(); // close popup
+    patternChanged = true;
 }
 
 function removeStop(id) {
@@ -664,6 +661,7 @@ function removeStop(id) {
     reNumber();
     routeLines(update=true);
     mapStops();
+    patternChanged = true;
 
 }
 
@@ -705,6 +703,7 @@ $('a#pattern_reverse').click(function(e){
     reNumber();
     routeLines(update=true);
     mapStops();
+    patternChanged = true;
 });
 
 function copyFromPattern(pid) {
@@ -737,6 +736,7 @@ function copyFromPattern(pid) {
             reNumber();
             routeLines(update=true);
             mapStops();
+            patternChanged = true;
 
         },
         error: function (jqXHR, exception) {
@@ -815,6 +815,7 @@ function addStopsByName() {
             $('#nameStops_status').html(`Added`);
             $('#savePattern_status').html(`${names.length} new stop names added to pattern, pls map them`);
             $('#modal_nameStops').modal('hide');
+            patternChanged = true;
             
         },
         error: function (jqXHR, exception) {
@@ -958,8 +959,7 @@ function route_newStop() {
 
             // add this stop to the pattern
             addStop2Pattern(stop_id);
-
-
+            
             $('#route_newStop_status').html(`Added`);
             $('#modal_newStop').modal('hide');
         },
@@ -1025,6 +1025,7 @@ function route_UnMappedStop() {
                 return x != id;
             })
             console.log("globalUnMappedStops:",globalUnMappedStops);
+            patternChanged = true;
             reNumber();
             routeLines(update=true);
             mapStops();
