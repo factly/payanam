@@ -173,9 +173,9 @@ def addTable(df, table):
     cols = ','.join(list(df.columns))
     # SQL query to execute
     query  = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
-    print(query)
     ps_connection = threaded_postgreSQL_pool.getconn()
     cursor = ps_connection.cursor()
+    cf.logmessage(f"Adding {len(df)} rows to {table}")
     try:
         extras.execute_values(cursor, query, tuples)
         ps_connection.commit()

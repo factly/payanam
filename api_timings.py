@@ -300,9 +300,11 @@ def updateTimingsForPattern(pattern_id, pattern_length):
 
         else:
             # add flow
-            newSeq = list(range(len(df_exist), pattern_length))
+            newSeq = list(range(len(df_exist)+1, pattern_length+1))
             df_new = pd.DataFrame({'stop_sequence':newSeq})
             df_new['id'] = cf.assignUID(df_new)
+            df_new['space_id'] = space_id
+            df_new['trip_id'] = trip_id
             print("df_new:")
             print(df_new)
             tstatus1 = dbconnect.addTable(df_new, 'stop_times')

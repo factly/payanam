@@ -85,6 +85,8 @@ function loadTimings() {
     	},
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
+            $('#saveTimings_status').html("error:" + jqXHR.responseText);
+            $('#tabulator_stoptimes').html("error:" + jqXHR.responseText);
         }
     });
 }
