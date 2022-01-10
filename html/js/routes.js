@@ -155,6 +155,7 @@ $(document).ready(function () {
 
     loadRoutesList();
     loadStops();
+    loadConfig();
     
     $("#pattern_chosen").change(function () {
         if (! $(this).val()) return;

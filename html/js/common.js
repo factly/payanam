@@ -1,5 +1,9 @@
 // common.js
 
+// GLOBAL VARS
+
+var globalConfig = [];
+
 /* template for API calls
 
 var payload = {"description": "hello" };
@@ -115,6 +119,8 @@ $(document).ready(function() {
     
     // run authentication / API key handler:
     checkCookie();
+
+    
     
 });
 
@@ -400,8 +406,8 @@ function loadDefaults(callbackFlag=false, callbackFunc=null) {
 }
 
 
-var globalConfig = [];
-function loadConfig() {
+
+function loadConfig(callbackFlag=false, callbackFunc=null) {
     var payload = {};
     $.ajax({
         url : `${APIpath}loadConfig`,
@@ -412,6 +418,9 @@ function loadConfig() {
         success : function(returndata) {
             globalConfig = returndata['config'];
             console.log("globalConfig:",globalConfig);
+
+            // collback if so
+            if(callbackFlag) callbackFunc(); 
             //processData(returndata.data);
         },
         error: function(jqXHR, exception) {
@@ -420,7 +429,6 @@ function loadConfig() {
         }
     });
 }
-loadConfig();
 
 function loadURLParams(URLParams) {
     // URL parameters. from https://stackoverflow.com/a/2405540/4355695

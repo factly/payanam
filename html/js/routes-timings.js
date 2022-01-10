@@ -36,7 +36,13 @@ function loadTimings() {
         "pattern_id": pid,
     };
     $('#saveTimings_status').html(`Loading timings for pattern ${pid}..`);
+
+    // clear out existing tabulator object if we're reloading.
+    if(Tabulator.findTable("#tabulator_stoptimes").length) {
+        Tabulator.findTable("#tabulator_stoptimes")[0].destroy();
+    }
     $('#tabulator_stoptimes').html(`Loading timings for pattern ${pid}..`);
+    
     $.ajax({
         url: `/API/loadTimings`,
         type: "POST",
@@ -69,6 +75,7 @@ function loadTimings() {
                 delContent += `<option value="${t.id}">${hhmm} (${t.id})</option>`;
             });
             $('#trip2Delete').html(delContent);
+
 
             var tabulator_stoptimes = new Tabulator("#tabulator_stoptimes", {
                 height: 350,

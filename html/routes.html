@@ -124,18 +124,6 @@ width: 100%;
     overflow-y: scroll;
 }
 
-.narrow {
-    width: 30px;
-}
-
-.narrow2 {
-    width: 50px;
-}
-
-
-#pattern_chosen, #trip2Delete {
-    height: 2em;
-}
 
 .divOnMap1 {
     padding: 10px;
@@ -198,7 +186,7 @@ width: 100%;
     </div>
     <div class="col-md-3">
         <h4>Patterns</h4>
-        <p>Active Pattern: <select id="pattern_chosen">
+        <p>Active Pattern: <select id="pattern_chosen" class="bigSelect">
             <option value=""><- Select a Route</option>
         </select></p>
         <p>Delete this pattern <span class="pattern_selected"></span> <button class="btn btn-sm btn-danger" onclick="deletePattern()">Delete</button></p>
@@ -285,7 +273,7 @@ width: 100%;
         <!-- <p>Trips and Per-stop timings</p> -->
         <div id="tabulator_stoptimes"><button onclick="loadTimings()" class="btn btn-sm btn-secondary">Click to load timings</button></div>
         <p>Add a new trip starting at: <input class="narrow2" id="newTripStartTime" value="06:00"> <button onclick="addTrip()" class="btn btn-sm btn-warning">Add Trip</button> <span id="addTrip_status"></span></p>
-        <p>Delete this trip: <select id="trip2Delete">
+        <p>Delete this trip: <select id="trip2Delete" class="bigSelect">
             <option value="">Select trip</option>
         </select> <button onclick="deleteTrip()" class="btn btn-sm btn-danger">Delete Trip</button> <span id="deleteTrip_status"></span></p>
         <br>

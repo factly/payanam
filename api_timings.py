@@ -23,6 +23,7 @@ def loadTimings(req: loadTimings_payload):
     pattern_id = req.pattern_id
     returnD = { 'message': "success", "stops":[], "trips":[], "num_trips":0 }
 
+    # stops
     s1 = f"""select t1.stop_sequence, t1.stop_id, t2.name 
     from pattern_stops as t1
     left join stops_master as t2
@@ -34,10 +35,11 @@ def loadTimings(req: loadTimings_payload):
     df1 = dbconnect.makeQuery(s1, output='df', keepCols=True, fillna=True)
     returnD['stops'] = df1.to_dict(orient='records')
 
-
+    # trips
     s2 = f"""select * from trips 
     where space_id={space_id} 
     and pattern_id = '{pattern_id}'
+    order by start_time
     """
     df2 = dbconnect.makeQuery(s2, output='df', keepCols=True, fillna=True)
     df2['start_time'] = df2['start_time'].apply(lambda x: str(x)[:5])
@@ -46,6 +48,7 @@ def loadTimings(req: loadTimings_payload):
     returnD['trips'] = df2.to_dict(orient='records')
 
 
+    # timings
     if len(df2):
         trip_idSQL = cf.quoteNcomma(df2['id'].tolist())
         s3 = f"""select trip_id, stop_sequence, arrival_time from stop_times
@@ -67,7 +70,12 @@ def loadTimings(req: loadTimings_payload):
     # merge in stop ids, names
     df5 = pd.merge(df1, df4, on='stop_sequence', how='left')
 
-    returnD['stop_times'] = df5.to_dict(orient='records')
+    # sort by start timings
+    allCols = list(df5.columns)
+    tripCols = [x for x in allCols if x not in ('stop_sequence', 'stop_id', 'name')]
+    newCols = ['stop_sequence', 'stop_id', 'name'] + sorted(tripCols)
+
+    returnD['stop_times'] = df5[newCols].to_dict(orient='records')
     
     # TO DO: calc stop times offset from first trip or so
 
@@ -101,7 +109,7 @@ async def saveTimings(req: Request):
     df2 = pd.melt(df1, id_vars=keepcols, var_name='trip_id', value_name='arrival_time').sort_values(['trip_id','stop_sequence']).reset_index(drop=True)
     # df2.to_csv('stop_times.csv',index=False)
 
-    df2['id'] = cf.assignUID(df1)
+    df2['id'] = cf.assignUID(df2)
     df2['space_id'] = space_id
 
 
@@ -123,6 +131,7 @@ async def saveTimings(req: Request):
     dCount1 = dbconnect.execSQL(d1)
     returnD['old_count'] = dCount1
 
+    df2.to_csv('sample.csv')
     iStatus1 = dbconnect.addTable(df2, 'stop_times')
     if not iStatus1:
         returnD['new_count'] = 0

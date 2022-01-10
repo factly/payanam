@@ -132,6 +132,7 @@ var hash = new L.Hash(map);
 // RUN ON PAGE LOAD
 $(document).ready(function () {
     loadStops();
+    loadConfig();
 });
 
 // ############################################

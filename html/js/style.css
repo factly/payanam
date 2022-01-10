@@ -30,3 +30,15 @@ body {
 .ui-widget.ui-widget-content {
 	border:none;
 }
+
+.narrow {
+    width: 30px;
+}
+
+.narrow2 {
+    width: 50px;
+}
+
+.bigSelect {
+    height: 2em;
+}

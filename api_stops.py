@@ -197,6 +197,33 @@ def updateStops(req: updateStops_payload):
 
 ###############
 
+# def checkStopDependency(idsList, space_id):
+#     idsListSQL = cf.quoteNcomma(idsList)
+
+#     # scan pattern_stops
+#     s1 = f"""select t1.count(*) as count, t1.pattern_id, 
+#     t2.name as pattern_name, t2.route_id, t3.name as route_name, t3.depot
+#     from pattern_stops as t1
+#     left join patterns as t2
+#     on t1.pattern_id = t2.id
+#     left join routes as t3
+#     on t2.route_id = t3.id
+#     where t1.space_id = {space_id}
+#     and stop_id in ({idsListSQL})
+#     """
+#     df = dbconnect.makeQuery(s1, output='df', fillna=True)
+
+#     if not len(df):
+#         # no stop dependency
+#         return False, {}
+
+#     details = {}
+#     details['routesList'] = df['route_name'].unique().tolist()
+#     details['patternsList'] = df['pattern_id'].unique().tolist()
+#     details['count'] = len(df)
+#     return True, details
+
+
 class deleteStops_payload(BaseModel):
     idsList: List[str]
 
@@ -206,6 +233,37 @@ def deleteStops(req: deleteStops_payload):
     Delete stops
     """
     cf.logmessage("deleteStops api call")
+    idsList = req.idsList
+    space_id = int(os.environ.get('SPACE_ID',1))
+
+    # dependencyStatus, details = checkStopDependency(idsList, space_id)
+
+    # if not dependencyStatus:
+    idsListSQL = cf.quoteNcomma(idsList)
+    d1 = f"delete from stops_master where id in ({idsListSQL})"
+    dCount = dbconnect.execSQL(d1)
+
+    returnD = { "message": "success", "deleted": dCount, "confirmation_required": False }
+    if dCount:
+        return returnD
+    else:
+        raise HTTPException(status_code=400, detail="Nothing  to delete")
+    # else:
+    #     returnD = details
+    #     returnD['message'] = 'success'
+    #     returnD['confirmation_required'] = True
+    #     return returnD
+
+
+class deleteStopsConfirm_payload(BaseModel):
+    idsList: List[str]
+
+@app.post("/API/deleteStopsConfirm", tags=["stops"])
+def deleteStopsConfirm(req: deleteStopsConfirm_payload):
+    """
+    Delete stops - Confirm
+    """
+    cf.logmessage("deleteStopsConfirm api call")
     idsList = req.idsList
     idsListSQL = cf.quoteNcomma(idsList)
     d1 = f"delete from stops_master where id in ({idsListSQL})"
