@@ -131,7 +131,7 @@ async def saveTimings(req: Request):
     dCount1 = dbconnect.execSQL(d1)
     returnD['old_count'] = dCount1
 
-    df2.to_csv('sample.csv')
+    # df2.to_csv('sample.csv')
     iStatus1 = dbconnect.addTable(df2, 'stop_times')
     if not iStatus1:
         returnD['new_count'] = 0

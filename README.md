@@ -2,7 +2,7 @@
 
 ## Setup
 ```
-pip install fastapi uvicorn[standard] psycopg2-binary pandas
+pip install -r requirements.txt
 ```
 
 ## Run

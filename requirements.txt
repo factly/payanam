@@ -1,6 +1,6 @@
 psycopg2-binary
+uvicorn[standard]
 pandas
 aiofiles
 fastapi
-uvicorn
 jellyfish

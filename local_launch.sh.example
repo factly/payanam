@@ -1,0 +1,12 @@
+#!/bin/bash
+
+export DB_SERVER='localhost'
+export DB_PORT='5432'
+export DB_DBNAME='dbname'
+export DB_USER='username'
+export DB_PW='password'
+
+export SPACE_ID=1
+export CHUNKSIZE=10000
+
+uvicorn payanam_launch:app --port 5500 --reload

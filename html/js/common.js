@@ -229,7 +229,20 @@ function topMenu() {
       <li class="nav-item">
       <a class="nav-link" href="routes.html">Routes</a>
       </li>
-      <li class="nav-item">
+      
+      
+    </ul>
+    <span class="navbar-text"><small>
+      <a id="versionNum" href="https://github.com/WRI-Cities/payanam" target="_blank"></a> | <a href="admin.html">Admin</a>
+    </small></span>
+  </div>
+</nav>
+    `;
+    $('#topMenu').html(menu);
+}
+
+/* moved-out menu items
+<li class="nav-item">
         <a class="nav-link" href="index.html">Overview</a>
       </li>
       <li class="nav-item">
@@ -251,16 +264,7 @@ function topMenu() {
       <li class="nav-item">
       <a class="nav-link" href="print.html">Print</a>
       </li>
-      
-    </ul>
-    <span class="navbar-text"><small>
-      <a id="versionNum" href="https://github.com/WRI-Cities/payanam" target="_blank"></a> | <a href="admin.html">Admin</a>
-    </small></span>
-  </div>
-</nav>
-    `;
-    $('#topMenu').html(menu);
-}
+*/
 
 function directionDecide(stoprow) {
     // moved here from routeMap.js

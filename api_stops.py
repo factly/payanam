@@ -255,25 +255,25 @@ def deleteStops(req: deleteStops_payload):
     #     return returnD
 
 
-class deleteStopsConfirm_payload(BaseModel):
-    idsList: List[str]
+# class deleteStopsConfirm_payload(BaseModel):
+#     idsList: List[str]
 
-@app.post("/API/deleteStopsConfirm", tags=["stops"])
-def deleteStopsConfirm(req: deleteStopsConfirm_payload):
-    """
-    Delete stops - Confirm
-    """
-    cf.logmessage("deleteStopsConfirm api call")
-    idsList = req.idsList
-    idsListSQL = cf.quoteNcomma(idsList)
-    d1 = f"delete from stops_master where id in ({idsListSQL})"
-    dCount = dbconnect.execSQL(d1)
+# @app.post("/API/deleteStopsConfirm", tags=["stops"])
+# def deleteStopsConfirm(req: deleteStopsConfirm_payload):
+#     """
+#     Delete stops - Confirm
+#     """
+#     cf.logmessage("deleteStopsConfirm api call")
+#     idsList = req.idsList
+#     idsListSQL = cf.quoteNcomma(idsList)
+#     d1 = f"delete from stops_master where id in ({idsListSQL})"
+#     dCount = dbconnect.execSQL(d1)
 
-    returnD = { "message": "success", "deleted": dCount }
-    if dCount:
-        return returnD
-    else:
-        raise HTTPException(status_code=400, detail="Nothing  to delete")
+#     returnD = { "message": "success", "deleted": dCount }
+#     if dCount:
+#         return returnD
+#     else:
+#         raise HTTPException(status_code=400, detail="Nothing  to delete")
 
 ###############
 
