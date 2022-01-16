@@ -4,3 +4,4 @@ pandas
 aiofiles
 fastapi
 jellyfish
+python-multipart

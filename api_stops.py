@@ -85,8 +85,6 @@ def addStops(req: addStops_payload):
     df1['created_on'] = timestamp
     df1['created_by'] = '' # will bring in username later
 
-    df1.to_csv('working/addStops.csv', index=False)
-
     not_added = []; added = []
     for row in df1.to_dict(orient='records'):
         if not row.get('name'):
