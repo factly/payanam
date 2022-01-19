@@ -1,7 +1,7 @@
-psycopg2-binary
-uvicorn[standard]
-pandas
-aiofiles
 fastapi
-jellyfish
+uvicorn[standard]
 python-multipart
+aiofiles
+pandas
+psycopg2-binary
+jellyfish
