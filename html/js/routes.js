@@ -3,6 +3,7 @@
 // ############################################
 // GLOBAL VARIABLES
 
+var globalRoutesList = [];
 var globalRoute = {};
 var allStopsLayer = new L.geoJson(null);
 var patternLayer = new L.geoJson(null);
@@ -196,6 +197,8 @@ function loadRoutesList(route_id) {
             });
             $('#depot_select').html(depotContent);
 
+            globalRoutesList = returndata.routes;
+            
             $('#routes_list').select2({
                 data: returndata.routes,
                 placeholder: "Choose a Route",

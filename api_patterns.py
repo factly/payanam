@@ -196,8 +196,9 @@ def editPattern(req: editPattern_payload):
         "newCount": len(df)
     }
 
-    # update timings entries
-    returnD['numTrips'], returnD['timings_added'], returnD['timings_removed'] = updateTimingsForPattern(req.pattern_id, len(df))
+    # update timings entries if the length of the pattern has changed
+    if len(existingPatternStops) != len(df):
+        returnD['numTrips'], returnD['timings_added'], returnD['timings_removed'] = updateTimingsForPattern(req.pattern_id, len(df))
     
     cf.logmessage(returnD)
     return returnD

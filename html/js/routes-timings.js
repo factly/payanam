@@ -53,9 +53,9 @@ function loadTimings() {
             // console.log("loadTimings:",returndata);
             
             let columnsConfig = [
-                {title:'num', field:'stop_sequence', headerFilter:'input', width:30},
-                {title:'id', field:'stop_id', headerFilter:'input', width:100, visible:false},
-                {title:'stop', field:'name', headerFilter:'input', width:200, headerSort:false}
+                {title:'num', field:'stop_sequence', headerFilter:'input', width:30, frozen:true},
+                {title:'stop', field:'name', headerFilter:'input', width:200, headerSort:false, frozen:true},
+                {title:'id', field:'stop_id', headerFilter:'input', width:100, visible:false}
             ];
 
             let delContent = '<option value="">Select trip</option>';

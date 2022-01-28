@@ -109,7 +109,7 @@ async def saveTimings(req: Request):
     df2 = pd.melt(df1, id_vars=keepcols, var_name='trip_id', value_name='arrival_time').sort_values(['trip_id','stop_sequence']).reset_index(drop=True)
     # df2.to_csv('stop_times.csv',index=False)
 
-    df2['id'] = cf.assignUID(df2)
+    df2['id'] = cf.assignUID(df2, length=7)
     df2['space_id'] = space_id
 
 
@@ -247,7 +247,7 @@ async def deleteTrip(req: addTrip_payload):
     df2 = df1[['stop_sequence']].copy()
     df2['space_id'] = space_id
     df2['trip_id'] = trip_id
-    df2['id'] = cf.assignUID(df1)
+    df2['id'] = cf.assignUID(df1, length=7)
     df2['arrival_time'] = None
     df2.at[0,'arrival_time'] = start_time
 
@@ -272,27 +272,41 @@ def updateTimingsForPattern(pattern_id, pattern_length):
     totalAdded = totalRemoved = 0
 
     # find all trips for the pattern
-    s1 = f"""select id from trips
-    where space_id = {space_id}
-    and pattern_id = '{pattern_id}'
+    s1 = f"""select t1.id as trip_id, t2.id, t2.stop_sequence
+    from trips as t1
+    left join stop_times as t2
+    on t1.id = t2.trip_id
+    where t1.space_id = {space_id}
+    and t1.pattern_id = '{pattern_id}'
+    and t2.space_id = {space_id}
+    order by t2.trip_id, t2.stop_sequence
     """
-    tripsList = dbconnect.makeQuery(s1, output='column')
+    df_exist_all = dbconnect.makeQuery(s1, output='df', keepCols=True)
+    # tripsList = dbconnect.makeQuery(s1, output='column')
 
-    if not len(tripsList):
-        return len(tripsList), totalAdded, totalRemoved
+    if not len(df_exist_all):
+        return 0, 0, 0
+
+    tripsList = df_exist_all['trip_id'].unique().tolist()
+
+    # if not len(tripsList):
+    #     return len(tripsList), totalAdded, totalRemoved
 
     all_delIds = []
     all_df_new = []
     for trip_id in tripsList:
         # get existing
         cf.logmessage(f"trip_id: {trip_id}")
-        space_id = int(os.environ.get('SPACE_ID',1))
-        s1 = f"""select id, stop_sequence from stop_times
-        where space_id = {space_id}
-        and trip_id = '{trip_id}'
-        order by stop_sequence
-        """
-        df_exist = dbconnect.makeQuery(s1, output='df', keepCols=True)
+        
+        df_exist = df_exist_all[df_exist_all['trip_id'] == trip_id ].copy().reset_index(drop=True)
+
+        # space_id = int(os.environ.get('SPACE_ID',1))
+        # s1 = f"""select id, stop_sequence from stop_times
+        # where space_id = {space_id}
+        # and trip_id = '{trip_id}'
+        # order by stop_sequence
+        # """
+        # df_exist = dbconnect.makeQuery(s1, output='df', keepCols=True)
         
         if len(df_exist) == pattern_length:
             # no change needed!
@@ -301,24 +315,15 @@ def updateTimingsForPattern(pattern_id, pattern_length):
         elif len(df_exist) > pattern_length:
             # delete flow
             delIds = df_exist[pattern_length:]['id'].tolist()
-            # cf.logmessage("ids to delete:",delIds)
             if len(delIds): all_delIds += delIds
-            # delIdsSQL = cf.quoteNcomma(delIds)
-            # d1 = f"""delete from stop_times
-            # where id in ({delIdsSQL})
-            # """
-            # d1Count = dbconnect.execSQL(d1)
-            # totalRemoved += d1Count
 
         else:
             # add flow
             newSeq = list(range(len(df_exist)+1, pattern_length+1))
             df_new = pd.DataFrame({'stop_sequence':newSeq})
-            df_new['id'] = cf.assignUID(df_new)
+            df_new['id'] = cf.assignUID(df_new, length=7)
             df_new['space_id'] = space_id
             df_new['trip_id'] = trip_id
-            # tstatus1 = dbconnect.addTable(df_new, 'stop_times')
-            # totalAdded += len(df_new)
             all_df_new.append(df_new)
 
     
