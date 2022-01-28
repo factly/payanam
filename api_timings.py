@@ -281,6 +281,8 @@ def updateTimingsForPattern(pattern_id, pattern_length):
     if not len(tripsList):
         return len(tripsList), totalAdded, totalRemoved
 
+    all_delIds = []
+    all_df_new = []
     for trip_id in tripsList:
         # get existing
         cf.logmessage(f"trip_id: {trip_id}")
@@ -299,13 +301,14 @@ def updateTimingsForPattern(pattern_id, pattern_length):
         elif len(df_exist) > pattern_length:
             # delete flow
             delIds = df_exist[pattern_length:]['id'].tolist()
-            cf.logmessage("ids to delete:",delIds)
-            delIdsSQL = cf.quoteNcomma(delIds)
-            d1 = f"""delete from stop_times
-            where id in ({delIdsSQL})
-            """
-            d1Count = dbconnect.execSQL(d1)
-            totalRemoved += d1Count
+            # cf.logmessage("ids to delete:",delIds)
+            if len(delIds): all_delIds += delIds
+            # delIdsSQL = cf.quoteNcomma(delIds)
+            # d1 = f"""delete from stop_times
+            # where id in ({delIdsSQL})
+            # """
+            # d1Count = dbconnect.execSQL(d1)
+            # totalRemoved += d1Count
 
         else:
             # add flow
@@ -314,9 +317,26 @@ def updateTimingsForPattern(pattern_id, pattern_length):
             df_new['id'] = cf.assignUID(df_new)
             df_new['space_id'] = space_id
             df_new['trip_id'] = trip_id
-            print("df_new:")
-            print(df_new)
-            tstatus1 = dbconnect.addTable(df_new, 'stop_times')
-            totalAdded += len(df_new)
+            # tstatus1 = dbconnect.addTable(df_new, 'stop_times')
+            # totalAdded += len(df_new)
+            all_df_new.append(df_new)
+
     
+    # delete at once
+    if len(all_delIds):
+        delIdsSQL = cf.quoteNcomma(all_delIds)
+        cf.logmessage(f"ids to delete: {all_delIds}")
+        d1 = f"""delete from stop_times
+        where id in ({delIdsSQL})
+        """
+        totalRemoved = dbconnect.execSQL(d1)
+    
+
+    # add at once
+    if len(all_df_new):
+        add_df = pd.concat(all_df_new, sort=False, ignore_index=True)
+        print("add_df:")
+        print(add_df)
+        totalAdded = dbconnect.addTable(add_df, 'stop_times')
+
     return len(tripsList), totalAdded, totalRemoved 

@@ -67,6 +67,7 @@ CREATE TABLE trips(
 	start_time TIME(0) NULL,
 	end_time TIME(0) NULL,
 	days VARCHAR(100) NULL,
+	block_id VARCHAR(10) NULL,
 	service_id VARCHAR(10) NULL,
 	last_updated TIMESTAMP(0) NULL,
 	modified_by VARCHAR(100) NULL

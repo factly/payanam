@@ -25,15 +25,26 @@ def loadRoutesList(req: loadRoutesList_payload):
 
     s1 = f"""select id, name, depot, description from routes 
     where space_id = {space_id}
-    order by name"""
+    order by depot, name"""
     df = dbconnect.makeQuery(s1, output='df',keepCols=True)
     df.rename(columns={'name':'text'}, inplace=True)
 
+    returnD = { 'message': "success"}
+    
     # TO DO: group by depots, route groups etc in this format: 
     # https://select2.org/data-sources/formats#grouped-data
-    
-    returnD = { 'message': "success"}
-    returnD['results'] = df.to_dict(orient='records') 
+    returnD['routes'] = []
+    for depot in df['depot'].unique():
+        row = {}
+        if not len(depot): row['text'] = "MISC"
+        else: row['text'] = depot
+        df2 = df[df['depot']==depot]
+        row['children'] = df2.to_dict(orient='records')
+        returnD['routes'].append(row)
+
+    # returnD['routes'] = df.to_dict(orient='records')
+    returnD['depots'] = df['depot'].unique().tolist()
+
     return returnD
 
     # if len(df):

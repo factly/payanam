@@ -189,8 +189,15 @@ function loadRoutesList(route_id) {
         contentType: 'application/json',
         success: function (returndata) {
 
+            // populate depot selector
+            let depotContent = `<option value="">Depot</option>`;
+            returndata.depots.forEach(d => {
+                depotContent += `<option value="${d}">${d}</option>`;
+            });
+            $('#depot_select').html(depotContent);
+
             $('#routes_list').select2({
-                data: returndata.results,
+                data: returndata.routes,
                 placeholder: "Choose a Route",
                 width: "300px",
                 allowClear: true
