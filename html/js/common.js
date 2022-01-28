@@ -232,9 +232,9 @@ function topMenu() {
       
       
     </ul>
-    <span class="navbar-text"><small>
+    <span class="navbar-text">
       <a id="versionNum" href="https://github.com/WRI-Cities/payanam" target="_blank"></a> | <a href="admin.html">Admin</a>
-    </small></span>
+    </span>
   </div>
 </nav>
     `;
