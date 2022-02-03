@@ -78,13 +78,13 @@ def deletePatterns(req: deletePatterns_payload):
     space_id = int(os.environ.get('SPACE_ID',1))
     patternsSQL = cf.quoteNcomma(req.patterns)
     d1 = f"delete from pattern_stops where space_id={space_id} and pattern_id in ({patternsSQL})"
-    d2 = f"delete from patterns where space_id={space_id} and where id in ({patternsSQL})"
+    d2 = f"delete from patterns where space_id={space_id} and id in ({patternsSQL})"
     
     d1Count = dbconnect.execSQL(d1)
     d2Count = dbconnect.execSQL(d2)
 
     # also trips and timings under the pattern
-    d3 = f"delete from stop_times where space_id={space_id} and where trip_id in (select id from trips where pattern_id in ({patternsSQL}) )"
+    d3 = f"delete from stop_times where space_id={space_id} and trip_id in (select id from trips where pattern_id in ({patternsSQL}) )"
     d4 = f"delete from trips where where space_id={space_id} and pattern_id in ({patternsSQL})"
     d3Count = dbconnect.execSQL(d3)
     d4Count = dbconnect.execSQL(d4)
