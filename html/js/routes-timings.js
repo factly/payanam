@@ -26,6 +26,15 @@ $(document).ready(function () {
 // ############################################
 // FUNCTIONS
 
+function clearTimings(pid=null) {
+    // clear out existing tabulator object if we're reloading.
+    if(Tabulator.findTable("#tabulator_stoptimes").length) {
+        Tabulator.findTable("#tabulator_stoptimes")[0].destroy();
+    }
+    if(pid) $('#tabulator_stoptimes').html(`Loading timings for pattern ${pid}..`);
+    else $('#tabulator_stoptimes').html(`<button onclick="loadTimings()" class="btn btn-sm btn-secondary">Click to load timings</button>`);
+}
+
 function loadTimings() {
     if(patternChanged) {
         alert(`Please save changes to the pattern first.`);
@@ -37,11 +46,7 @@ function loadTimings() {
     };
     $('#saveTimings_status').html(`Loading timings for pattern ${pid}..`);
 
-    // clear out existing tabulator object if we're reloading.
-    if(Tabulator.findTable("#tabulator_stoptimes").length) {
-        Tabulator.findTable("#tabulator_stoptimes")[0].destroy();
-    }
-    $('#tabulator_stoptimes').html(`Loading timings for pattern ${pid}..`);
+    clearTimings(pid);
     
     $.ajax({
         url: `/API/loadTimings`,

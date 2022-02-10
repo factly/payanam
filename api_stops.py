@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from fastapi import HTTPException, Header, Path
 import pandas as pd
-import jellyfish as jf # for fuzzy search
 
 from payanam_launch import app
 import commonfuncs as cf
@@ -423,74 +422,4 @@ def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
 
     return returnD
 
-
-###############
-
-class suggestMatches_payload(BaseModel):
-    name: str
-    minLat: float = -90
-    maxLat: float = 90
-    minLon: float = -180
-    maxLon: float = 180
-    fuzzy: Optional[bool] = True
-    accuracy: Optional[float] = 0.8
-    maxRows: Optional[int] = 10
-    depot: Optional[str] = None
-    orig_id: Optional[str] = None
-
-@app.post("/API/suggestMatches", tags=["stops"])
-def suggestMatches(req: suggestMatches_payload):
-    cf.logmessage("suggestMatches api call")
-
-    # # convert request body to json, from https://stackoverflow.com/a/60845064/4355695
-    # row = req.__dict__
-    # print(row)
-    # return row
-    space_id = int(os.environ.get('SPACE_ID',1))
-    stop_name_zap = cf.zapper(req.name)
-
-    s1 = f"""select id, zap, name, latitude, longitude from stops_master
-    where space_id = {space_id}
-    and latitude between {req.minLat} and {req.maxLat}
-    and longitude between {req.minLon} and {req.maxLon}
-    """
-    dfMapped = dbconnect.makeQuery(s1, output='df')
-
-    if req.orig_id:
-        # remove the original stop from the matches
-        dfMapped = dfMapped[dfMapped['id']!= req.orig_id].copy()
-    
-    cf.logmessage(f"Got {len(dfMapped)} locations within the lat-long bounds")
-    
-    # filter 1 : get name matches
-    if not req.fuzzy:
-        # direct match
-        filter1 = ( dfMapped[ dfMapped['zap'] == stop_name_zap ].copy()
-            .drop_duplicates(subset=['latitude','longitude']).copy()
-            .head(req.maxRows).copy().reset_index(drop=True)
-        )
-        # putting inside () to make mutli-line possible here
-    else:
-        # dfMapped['Fpartial'] = dfMapped['zap'].apply( lambda x: fuzz.partial_ratio(stop_name_zap,x) )
-        dfMapped['score'] = dfMapped['zap'].apply( lambda x: jf.jaro_winkler(stop_name_zap,x) )
-        
-        filter1 = ( dfMapped[dfMapped['score'] >= req.accuracy ].sort_values('score',ascending=False)
-            .drop_duplicates(subset=['latitude','longitude']).copy()
-            .head(req.maxRows).copy().reset_index(drop=True)
-        )
-
-        # below accuracy=0.8, observed its normally too much mismatch, so better to limit it.
-        
-        # skipping ranking, source and databank parts from orig payanam for now
-
-    cf.logmessage(f"{req.name}: {len(filter1)} matches found")
-
-    del filter1['zap']
-
-    returnD = { 'message': "success"}
-    returnD['hits'] = len(filter1)
-    if len(filter1):
-        returnD['data'] = filter1.to_dict(orient='records')
-
-    return returnD
 

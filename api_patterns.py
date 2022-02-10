@@ -228,3 +228,5 @@ def loadPattern(req: loadPattern_payload):
     returnD['pattern_stops'] = df1.to_dict(orient='records')
 
     return returnD
+
+

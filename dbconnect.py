@@ -103,7 +103,7 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
 
 
 def execSQL(s1):
-    cf.logmessage(s1)
+    cf.logmessage(' '.join(s1.split()))
     ps_connection = threaded_postgreSQL_pool.getconn()
     ps_cursor = ps_connection.cursor()
     ps_cursor.execute(s1)

@@ -218,6 +218,8 @@ function loadRoutesList(route_id) {
             });
 
             $('#routes_list').on('select2:clear', function (e) {
+                clearTimings();
+                clearUI();
                 clearRoute();
             });
 
@@ -346,9 +348,11 @@ function clearRoute(){
 
 function loadPattern(pid) {
     console.log(`loadPattern: ${pid}`);
+    clearTimings();
+    clearUI();
     let patternHolder = globalRoute.patterns.filter(r => {return r.id === pid});
     // console.log("pattern json:",patternHolder[0]);
-    $('.pattern_selected').html(patternHolder[0].name);
+    $('.pattern_selected').html(`${patternHolder[0].name} <small><small>(${pid})</small></small>`);
 
     patternLayer.clearLayers();
     stopsLayer.clearLayers();
@@ -525,14 +529,18 @@ function savePattern() {
 }
 
 function resetPattern() {
+    clearUI();
+    patternChanged = false;
     let pid = $('#pattern_chosen').val();
     loadPattern(pid);
-    $('#stopInfo').html(`select one`);
-    $('#suggestions').html(``);
-    matchesLayer.clearLayers();
-    patternChanged = false;
 }
 
+function clearUI() {
+    $('#stopInfo').html(`select one`);
+    $('#unmappedHolder').html(``);
+    $('#suggestions').html(``);
+    matchesLayer.clearLayers();
+}
 
 // ####################################
 // STOPS
