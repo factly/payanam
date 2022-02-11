@@ -21,6 +21,7 @@ var globalUnMappedStops = [];
 var globalSelectedStop = {};
 var globalStopNum = 0;
 var patternChanged = false;
+var globalNotMapped = 0;
 
 // ACE editor
 var stopsEntry = ace.edit("stopsEntry");
@@ -369,15 +370,16 @@ function loadPattern(pid) {
         contentType: 'application/json',
         success: function (returndata) {
             // console.log("pattern_stops:",returndata.pattern_stops);
+            clearUI();
             let sortableContent = '';
-            let notMapped = 0;
+            globalNotMapped = 0;
             returndata.pattern_stops.forEach((r,N) => {
                 sortableContent += makeStopDiv(r.stop_id, r.name);
-                if(!r.latitude) notMapped ++;
+                if(!r.latitude) globalNotMapped ++;
             });
             $('#stops_order_holder').html(sortableContent);
             reNumber();
-            $('#savePattern_status').html(`Pattern loaded. ${returndata.pattern_stops.length} stops total, ${notMapped} not mapped yet.`);
+            $('#savePattern_status').html(`Pattern loaded. ${returndata.pattern_stops.length} stops total, ${globalNotMapped} not mapped yet.`);
 
             // map it
             if(allStopsLoadedFlag) {
@@ -540,6 +542,7 @@ function clearUI() {
     $('#unmappedHolder').html(``);
     $('#suggestions').html(``);
     matchesLayer.clearLayers();
+    $('#autoMapPattern_status').html(``);
 }
 
 // ####################################
@@ -1126,9 +1129,9 @@ function loadSuggestions() {
         "maxLat": bounds._northEast.lat, 
         "minLon": bounds._southWest.lng, 
         "maxLon": bounds._northEast.lng, 
-        "fuzzy": true,
-        "accuracy": 0.7,
-        "maxRows": 10,
+        // "fuzzy": true,
+        // "accuracy": 0.7,
+        // "maxRows": 10,
         "depot": $('#route_depot').val()
     };
     console.log(payload);
@@ -1207,15 +1210,43 @@ function replacePatternStop(orig_id, new_id) {
     map.closePopup(); // close popup
 
 }
-// ############################################
-// TIMINGS
 
-function fetchTimings(pattern_id) {
-    // make api call
-    // populate fields
-    // make tabulator table with the stops
 
-    // to do: in case pattern changes, hide the timings section and show a text saying to save the pattern to DB to proceed with timings
+function autoMapPattern() {
+    if(globalNotMapped == 0) { 
+        alert("All stops in this pattern are mapped already.");
+        return;
+    }
+    if(!confirm(`Are sure? ${globalNotMapped} stops will be automatically mapped based on the current map extents. Press Cancel if you want to change the map view or so.`)) {
+        return;
+    }
+
+    let pid = $('#pattern_chosen').val();
+    let bounds = map.getBounds();
+    let payload = {
+        "pattern_id": pid,
+        "autoMap": true,
+        "minLat": bounds._southWest.lat, 
+        "maxLat": bounds._northEast.lat, 
+        "minLon": bounds._southWest.lng, 
+        "maxLon": bounds._northEast.lng
+    };
+    $('#autoMapPattern_status').html(`Processing, please wait a few secs...`);
+    $.ajax({
+        url: `/API/autoMapPattern`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            console.log(returndata);
+            $('#autoMapPattern_status').html(`Automapping done. Reloading pattern..`);
+
+            loadPattern(pid);
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#autoMapPattern_status').html(jqXHR.responseText);
+        }
+    });
 }
-
-
