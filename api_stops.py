@@ -14,10 +14,38 @@ import dbconnect
 
 ###############
 
+def fetchNumRoutes():
+    
+    # fetch the num of routes all the stops belong to
+    s1 = f"""select id, num_routes from
+        (select id, count(route_id) as num_routes from 
+            (select t1.id, t3.route_id
+            from stops_master as t1
+            left join pattern_stops as t2
+            on t1.id = t2.stop_id
+            left join patterns as t3
+            on t2.pattern_id = t3.id) as foo
+        group by id) as bar
+    where num_routes > 0
+    """
+    routenumList = dbconnect.makeQuery(s1, output='list')
+    routeNumD = {x['id']:x['num_routes'] for x in routenumList}
+    return routeNumD
+
+
+    
+
+
+
+
+###############
+
 class loadStops_payload(BaseModel):
     # criteria: Optional[str] = None
     data: List[str] = []
+    main: Optional[bool] = True
     indexed: Optional[bool] = False
+    unique: Optional[bool] = False
 
 
 @app.post("/API/loadStops", tags=["stops"])
@@ -25,22 +53,51 @@ def loadStops(req: loadStops_payload):
     cf.logmessage("loadStops api call")
 
     if len(req.data): 
+        if ['zap'] not in req.data:
+            req.data.append('zap')
         cols = ','.join(req.data)
     else: 
-        cols = ','.join(['id','name','description','latitude','longitude','stop_group_id','created_on','created_by','last_updated','modified_by'])
+        # cols = ','.join(['id','name','description','latitude','longitude','stop_group_id','created_on','created_by','last_updated','modified_by'])
+        cols = ','.join(['id','name','description','latitude','longitude','zap'])
     
     space_id = int(os.environ.get('SPACE_ID',1))
     s1 = f"select {cols} from stops_master where space_id = {space_id}"
     df = dbconnect.makeQuery(s1, output='df', fillna=False)
     returnD = { 'message': "success"}
     if len(df):
-        returnD['stops'] = df.to_dict(orient='records')
+        if req.unique:
+            routeNumD = fetchNumRoutes()
+            df['num_routes'] = df['id'].apply(lambda x: routeNumD.get(x,0))
+            def grouper1(x):
+                row = {}
+                row['count'] = len(x)
+                row['locations'] = len(set(zip([l for l in x['latitude'] if l], [l for l in x['longitude'] if l])))
+                if 'name' in x.columns:
+                    names = x['name'].unique().tolist()
+                    row['names'] = '|'.join(names)
+                    row['num_names'] = len(names)
+                routes = [routeNumD.get(y, 0) for y in x['id'].tolist()]
+                row['num_routes'] = sum(routes)
+                return pd.Series(row)
+
+            df2 = df.groupby('zap').apply(grouper1).reset_index(drop=False)
+            returnD['unique'] = df2.to_dict(orient='records')
+
+        if req.main:
+            returnD['stops'] = df.to_dict(orient='records')
+        
         if req.indexed:
             returnD['indexed'] = df.set_index('id', drop=False).to_dict(orient='index')
+
+        
     else:
-        returnD['stops'] = []
+        if req.main:
+            returnD['stops'] = []
         if req.indexed:
             returnD['indexed'] = {}
+        if req.unique:
+            returnD['unique'] = []
+
     
     time.sleep(5)
     return returnD
@@ -423,3 +480,71 @@ def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
     return returnD
 
 
+###############
+
+class combineStops_payload(BaseModel):
+    idsList: List[str]
+    target_id: Optional[str] = None
+    new_name: Optional[str] = None
+    new_latitude: Optional[float] = None
+    new_longitude: Optional[float] = None
+    new_description: Optional[str] = None
+
+@app.post("/API/combineStops", tags=["stops"])
+def combineStops(req: combineStops_payload ):
+    cf.logmessage("combineStops api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
+    returnD = { "message": "success" }
+
+    # validations / new stop flow
+    if not req.target_id:
+        if not req.new_name or not req.new_latitude or not req.new_longitude:
+            raise HTTPException(status_code=400, detail="Invalid data")
+
+        target_stop_id = cf.makeUID()
+        icols=['space_id', 'id', 'name', 'latitude', 'longitude', 'created_on', 'zap']
+        ivals= [f"{space_id}", f"'{target_stop_id}'", f"'{req.new_name}'", f"{req.new_latitude}", f"{req.new_longitude}" \
+            "CURRENT_TIMESTAMP", f"'{cf.zapper(req.new_name)}'" ] 
+
+        if row.get('description'): 
+            icols.append('description')
+            ivals.append(f"'{row['description']}'")
+        # if row.get('group_id'): 
+        #     icols.append('group_id')
+        #     ivals.append(f"'{row['group_id']}'")
+        
+        i1 = f"""insert into stops_master ({','.join(icols)}) values ({','.join(ivals)})"""
+        iCount = dbconnect.execSQL(i1)
+        if not iCount:
+            raise HTTPException(status_code=400, detail="Unable to create new stop in DB")
+    
+        returnD["new_stop_id"] = target_stop_id 
+
+    else:
+        target_stop_id = req.target_id
+        s1 = f"select count(*) from stops_master where space_id={space_id} and id='{target_stop_id}'"
+        s1Count = dbconnect.makeQuery(s1, output='oneValue')
+        if s1Count != 1:
+            raise HTTPException(status_code=400, detail="Invalid target_id")
+    
+
+    # replacing in pattern_stops
+    idsList = [x for x in req.idsList if x != target_stop_id] # exclude the chosen one
+    idsListSQL = cf.quoteNcomma(idsList)
+    # to do: validation of the to-replace stops
+
+    u1 = f"""update pattern_stops
+    set stop_id = '{target_stop_id}'
+    where stop_id in ({idsListSQL})
+    """
+    u1Count = dbconnect.execSQL(u1)
+    returnD['replace_count'] = u1Count
+    
+    # getting rid of the extra stops in stops_master
+    d1 = f"""delete from stops_master
+    where id in ({idsListSQL})
+    """
+    d1Count = dbconnect.execSQL(d1)
+    returnD['deleted_stops'] = d1Count
+    
+    return returnD

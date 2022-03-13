@@ -67,8 +67,8 @@ body {
     <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
       <a class="nav-link active" id="v-pills-1-tab" data-toggle="pill" href="#v-pills-1" role="tab" aria-controls="v-pills-1" aria-selected="true">Route Defaults</a>
       <a class="nav-link" id="v-pills-2-tab" data-toggle="pill" href="#v-pills-2" role="tab" aria-controls="v-pills-2" aria-selected="false">Data Import</a>
-      <a class="nav-link" id="v-pills-3-tab" data-toggle="pill" href="#v-pills-3" role="tab" aria-controls="v-pills-3" aria-selected="false">Data Banks</a>
-      <a class="nav-link" id="v-pills-4-tab" data-toggle="pill" href="#v-pills-4" role="tab" aria-controls="v-pills-4" aria-selected="false">Misc Settings</a>
+      <a class="nav-link" id="v-pills-3-tab" data-toggle="pill" href="#v-pills-3" role="tab" aria-controls="v-pills-3" aria-selected="false">GTFS Settings</a>
+      <a class="nav-link" id="v-pills-4-tab" data-toggle="pill" href="#v-pills-4" role="tab" aria-controls="v-pills-4" aria-selected="false">GTFS Export</a>
     </div>
   </div>
   <div class="col-md-10">
@@ -95,10 +95,43 @@ body {
 
       </div>
       <div class="tab-pane fade" id="v-pills-3" role="tabpanel" aria-labelledby="v-pills-3-tab">
-        Hey yo 3
+        <h3>GTFS Settings</h3>
+        <div class="row">
+          <div class="col-md-4">
+            <p align="center">agency.txt</p>
+            <div class="row"><div class="col-md-6 rightside">agency_id</div><div class="col-md-6"><input id="agency_id"></div></div>
+            <div class="row"><div class="col-md-6 rightside">agency_name</div><div class="col-md-6"><input id="agency_name"></div></div>
+            <div class="row"><div class="col-md-6 rightside">agency_url</div><div class="col-md-6"><input id="agency_url"></div></div>
+            <div class="row"><div class="col-md-6 rightside">agency_timezone</div><div class="col-md-6"><input id="agency_timezone"></div></div>
+            <div class="row"><div class="col-md-6 rightside">agency_phone</div><div class="col-md-6"><input id="agency_phone"></div></div>
+          </div>
+
+          <div class="col-md-4">
+            <p align="center">calendar.txt defaults</p>
+            <div class="row"><div class="col-md-6 rightside">service_id</div><div class="col-md-6"><input id="calendar_default_service_id"></div></div>
+            <div class="row"><div class="col-md-6 rightside">start_date</div><div class="col-md-6"><input id="calendar_default_start_date"></div></div>
+            <div class="row"><div class="col-md-6 rightside">end_date</div><div class="col-md-6"><input id="calendar_default_end_date"></div></div>
+            <div class="row"><div class="col-md-6 rightside">days</div><div class="col-md-6"><input id="calendar_default_days"></div></div>
+          </div>
+
+        </div>
+        <br>
+        <button class="btn btn-md btn-primary" onclick="gtfs_settings_update()">Update</button> <span id="gtfs_settings_update_status"></span>
       </div>
       <div class="tab-pane fade" id="v-pills-4" role="tabpanel" aria-labelledby="v-pills-4-tab">
-        Hey yo 4
+        <h3>GTFS Export</h3>
+        <div class="row">
+          <div class="col-md-6">
+            <p>Filter down to one or more depots: <select id="gtfs_export_depot_select">
+              <option value="">All depots</option>
+            </select></p>
+            <p><button class="btn btn-block btn-success" onclick="createGTFS()">Create and Download GTFS</button> <span id="createGTFS_status"></span></p>
+          </div>
+          <div class="col-md-6">
+            <p><b>Previous exports</b></p>
+            <ul id="exportsList"></ul>
+          </div>
+        </div>
       </div>
     </div>
   </div>

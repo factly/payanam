@@ -3,6 +3,7 @@
 // GLOBAL VARS
 
 var globalConfig = [];
+var globalDepotsList = [];
 
 /* template for API calls
 
@@ -118,7 +119,7 @@ $(document).ready(function() {
     $('[data-toggle="tooltip"]').tooltip(); 
     
     // run authentication / API key handler:
-    checkCookie();
+    // checkCookie();
 
     
     
@@ -229,6 +230,9 @@ function topMenu() {
       <li class="nav-item">
       <a class="nav-link" href="routes.html">Routes</a>
       </li>
+      <li class="nav-item">
+      <a class="nav-link" href="reconciliation.html">Combine Stops</a>
+      </li>
       
       
     </ul>
@@ -289,10 +293,10 @@ function openExternalMap(site='m'){
 		url = `https://maps.google.com/maps?q=${lat},${lon}+(My+Point)&z=${zoom}&ll=${lat},${lon}`;
 	// from https://webapps.stackexchange.com/a/54163/162017 
 	
-	else if (site == 'p') {
-    let fromStamp = '1420070400000'; // from 2015-01-01
-    url = `http://projets.pavie.info/pic4carto/index.html?from=${fromStamp}#${zoom}/${lat}/${lon}`;
-  }
+	// else if (site == 'p') {
+     //    let fromStamp = '1420070400000'; // from 2015-01-01
+     //    url = `http://projets.pavie.info/pic4carto/index.html?from=${fromStamp}#${zoom}/${lat}/${lon}`;
+     //  }
   
   else 
     url = `https://www.mapillary.com/app/?lat=${lat}&lng=${lon}&z=17`;
@@ -411,8 +415,8 @@ function loadDefaults(callbackFlag=false, callbackFunc=null) {
 
 
 
-function loadConfig(callbackFlag=false, callbackFunc=null) {
-    var payload = {};
+function loadConfig(callbackFlag=false, callbackFunc=null, depotFlag=false) {
+    var payload = {"depotFlag":depotFlag};
     $.ajax({
         url : `${APIpath}loadConfig`,
         type : 'POST',
@@ -422,7 +426,7 @@ function loadConfig(callbackFlag=false, callbackFunc=null) {
         success : function(returndata) {
             globalConfig = returndata['config'];
             console.log("globalConfig:",globalConfig);
-
+            if(returndata['depots']) globalDepotsList = returndata['depots'];
             // collback if so
             if(callbackFlag) callbackFunc(); 
             //processData(returndata.data);
