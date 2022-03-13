@@ -101,7 +101,7 @@ class autoMapPattern_payload(BaseModel):
     autoMap: Optional[bool] = False
 
 @app.post("/API/autoMapPattern", tags=["matching"])
-def suggestMatches(req: autoMapPattern_payload):
+def autoMapPattern(req: autoMapPattern_payload):
     cf.logmessage("suggestMatches api call")
 
     space_id = int(os.environ.get('SPACE_ID',1))
@@ -197,5 +197,36 @@ def suggestMatches(req: autoMapPattern_payload):
             returnD['automapped_count'] += u1Count
 
     
+    return returnD
+
+
+#####################
+
+# making an api call to fetch details of all unmapped routes etc - for later use
+
+class unMappedData_payload(BaseModel):
+    criteria: Optional[str] = None
+
+@app.post("/API/unMappedData", tags=["matching"])
+def unMappedData(req: unMappedData_payload):
+    cf.logmessage("suggestMatches api call")
+
+    space_id = int(os.environ.get('SPACE_ID',1))
+    returnD = { "message": "success"}
+
+    s1 = f"""select t3.depot, t3.name as route, t2.name as pattern, t1.stop_sequence, t4.name as stop_name, t1.stop_id
+    from pattern_stops as t1
+    left join patterns as t2
+    on t1.pattern_id = t2.id
+    left join routes as t3
+    on t2.route_id = t3.id
+    left join stops_master as t4
+    on t1.stop_id = t4.id
+    where t3.space_id = {space_id}
+    and t4.latitude is null
+    order by t3.depot, route, pattern, t1.stop_sequence
+    """
+    list1 = dbconnect.makeQuery(s1, output='list')
+    returnD['data'] = list1
     return returnD
 

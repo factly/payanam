@@ -1,10 +1,15 @@
 // ######################################
 /* GLOBAL VARIABLES */
 
+const normalColor = "blue";
+const selectedColor = "yellow";
+
+
 // Map: these layers need to have global scope, and are mentioned in tabulator constructors, hence need to be defined here.
 var stopsLayer = new L.geoJson(null);
 
-var allStops = {};
+var globalAllStops = {};
+var globalSelected = new Set();
 var globalTrainsData = {};
 var globalTrainsLines = {};
 // var trainsLayer = new L.geoJson(null);
@@ -19,7 +24,7 @@ var stopsTotal = function(values, data, calcParams){
 
 var stopsTable = new Tabulator("#stopsTable", {
     height: 500,
-    selectable: 1,
+    selectable: true,
     tooltipsHeader: true, //enable header tooltips,
     index: "id",
     columns: [
@@ -33,11 +38,20 @@ var stopsTable = new Tabulator("#stopsTable", {
 });
 
 stopsTable.on("rowSelected", function(row){
-    var s = row.getData();
-    if(s.latitude) mapMoveHere(s.latitude, s.longitude);
+    let s = row.getData();
+    if(s.latitude) {
+        mapMoveHere(s.latitude, s.longitude);
+        colorMap([s.id],selectedColor);
+    }
     setupStopEditing(s.id, s.name);
+    globalSelected.add(s.id);
+    
 });
 
+stopsTable.on("rowDeselected", function(row){
+    let s = row.getData();
+    colorMap([s.id],normalColor);
+});
 
 // #################################
 /* MAP */
@@ -127,12 +141,43 @@ map.on('move', function(e) {
 // lat, long in url
 var hash = new L.Hash(map);
 
+const lasso = L.lasso(map); // lasso tool : https://github.com/zakjan/leaflet-lasso
+
+// buttons on map
+L.easyButton('<img src="lib/lasso.png" width="100%" title="Click to activate Lasso tool: Press mouse button down and drag to draw a lasso on the map around the points you want to select." data-toggle="tooltip" data-placement="right">', function(btn, map){
+    lasso.enable();
+}).addTo(map);
 
 // ############################################
 // RUN ON PAGE LOAD
 $(document).ready(function () {
     loadStops();
     loadConfig();
+
+    // Lasso selector
+    map.on('lasso.finished', (event) => {
+        // console.log(`${event.layers.length} saplings selected by lasso tool`);
+        let ids = [];
+        event.layers.forEach(element => {
+            if(element.properties && element.properties.id) {
+                ids.push(element.properties.id);
+                
+            }
+        });
+        if(ids.length) {
+            console.log(`${ids.length} stops selected by lasso tool: ${ids}`);
+            stopsTable.deselectRow();
+            stopsTable.selectRow(ids);
+            // colorMap(ids,selectedColor);
+        }
+        
+    });
+
+    map.on('lasso.disabled', (event) => {
+        // lasso was making mouse cursor into hand after completion. So make it crosshairs again
+        $('.leaflet-container').css('cursor','crosshair');
+        // from https://stackoverflow.com/a/28724847/4355695 Changing mouse cursor to crosshairs
+    });
 });
 
 // ############################################
@@ -181,9 +226,9 @@ function loadStops() {
 function mapStops(data) {
     var circleMarkerOptions = {
         renderer: myRenderer,
-        radius: 4,
-        fillColor: 'purple',
-        color: 'yellow',
+        radius: 5,
+        fillColor: normalColor,
+        color: 'black',
         weight: 1,
         opacity: 1,
         fillOpacity: 0.7
@@ -202,11 +247,12 @@ function mapStops(data) {
         `;
         // <button onclick="loadRoutes('${e.id}')">load routes</button>
 
-        allStops[e.id] = L.circleMarker([lat,lon], circleMarkerOptions)
+        globalAllStops[e.id] = L.circleMarker([lat,lon], circleMarkerOptions)
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
             .bindPopup(popupContent);
-        allStops[e.id].properties = e;
-        allStops[e.id].addTo(stopsLayer);
+        globalAllStops[e.id].properties = e;
+        globalAllStops[e.id].on('click',markerOnClick);
+        globalAllStops[e.id].addTo(stopsLayer);
         mapCounter ++;
     });
     if (!map.hasLayer(stopsLayer)) map.addLayer(stopsLayer);
@@ -418,7 +464,7 @@ function updateStopLocation(id) {
 
 function unmapped() {
     if(!globalUnmappedFlag) {
-        stopsTable.setFilter("latitude", "=", "");
+        stopsTable.setFilter("latitude", "=", null);
         globalUnmappedFlag = true;
     }
     else {
@@ -495,5 +541,17 @@ function deleteStop() {
             console.log("error:", jqXHR.responseText);
             $("#stopsTable_status").html(jqXHR.responseText);
         },
+    });
+}
+
+
+function colorMap(idsList,chosenColor) {
+    idsList.forEach(e => {
+        if(globalAllStops[e]) {
+            globalAllStops[e].setStyle({
+                fillColor : chosenColor,
+                fillOpacity : 1.0
+            });
+        }
     });
 }

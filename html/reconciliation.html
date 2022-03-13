@@ -87,6 +87,22 @@ textarea {
 	font-size: 12px;
 }
 
+.tabulator {
+	font-size: 0.7em;
+}
+
+#newStop_div {
+	visibility: visible;
+}
+
+#targetStopSelect {
+	font-size: 0.8em;
+}
+
+#reconcillationPreview {
+	width:100%;height:200px;
+	font-size: 0.8em;
+}
 </style>
 
 </head>
@@ -101,11 +117,12 @@ textarea {
 
 <p><b>Unique Stop Names</b> &nbsp;&nbsp;&nbsp;
 <a class="badge badge-secondary" data-toggle="collapse" href="#collapse_uniqueStopsTable" role="button" aria-expanded="false" aria-controls="collapse_uniqueStopsTable">Show/Hide Table</a>
-<span class="alert alert-warning">Reconciling: <select id="chooseMode">
+<!-- <span class="alert alert-warning">Reconciling: <select id="chooseMode">
 	<option value="mapped">mapped</option>
 	<option value="unmapped">unmapped</option>
 	<option value="all">all</option>
-</select> stops.</span>
+</select> stops.</span> -->
+<span id="stopsTable_status"></span>
 </p>
 <div class="collapse show" id="collapse_uniqueStopsTable">
 <div id="uniqueStopsTable"></div>
@@ -143,7 +160,7 @@ textarea {
 	<small>open in: 
 	<big><a href="javascript:{}" onclick="openExternalMap('g')" class="badge badge-primary">Gmaps</a>&nbsp; 
 	<a href="javascript:{}" onclick="openExternalMap('m')" class="badge badge-primary">Mapillary</a>&nbsp;
-	<a href="javascript:{}" onclick="openExternalMap('p')" class="badge badge-primary">Pic4carto</a>
+	<!-- <a href="javascript:{}" onclick="openExternalMap('p')" class="badge badge-primary">Pic4carto</a> -->
 	</big>
 	</small>
 </div>
@@ -165,38 +182,43 @@ textarea {
 	<div id="collapse_recon" class="collapse show">
 	<div class="row">
 
-	<div class="col-md-5">
+	<div class="col-md-6">
 		Standardise <span class="stopSelectStatus">0</span> stops to:<br>
+		<select id="targetStopSelect" class="bigSelect"><option value="">Create new</option></select>
+		<div id="newStop_div">
 		<p>Name: &nbsp;&nbsp; <small><a href="javascript:;" onclick="pickFirst('name')">pick first</a></small><br>
-		<input id="recon_stop_name" class="form-control"></p>
+		<input id="recon_name" class="form-control"></p>
 		Lat,Lon: &nbsp;&nbsp; <small><i>click on map</i> or <a href="javascript:;" onclick="pickFirst()">pick first</a></small><br>
 		<p><input id="recon_loc" class="form-control"> </p>
 		Description: <small><i>optional</i></small><br>
-		<input id="recon_stop_desc" class="form-control">
-		
+		<input id="recon_description" class="form-control">
+		</div>
+
 	</div>
-	<div class="col-md-7">
-		<textarea id="reconcillationPreview" style="width:100%;height:200px;" disabled></textarea>
-		<p><button onclick="reconcileSubmit()" class="btn btn-warning"  data-toggle="tooltip" data-placement="bottom" title="">Reconcile Stops</button></p>
+	<div class="col-md-6">
+		<textarea id="reconcillationPreview" disabled></textarea>
+		<p><button onclick="combineStops()" class="btn btn-warning"  data-toggle="tooltip" data-placement="bottom" title="">Combine Stops</button></p>
 	</div>
 	</div>
 
-	<small><div id="reconcileStatus"><p class="alert alert-warning">Note: This will go into each of the mentioned routes, and overwrite that particular stop with the standardized values. <br><br>Changes made will take about 10-15 minues to reflect here through the reporting scripts, so please don't work on the same stop names again right afterwards.</p></div></small>
+	<div id="reconcileStatus"></div>
+	<br><small><p class="alert alert-warning">Note: This action replace all the selected stops with one - either an existing one, or a new one will be created. This change will be enacted on all the routes holding the selected stops.<br>This cannot be undone, so pls do this carefully. <!-- <br><br>Changes made will take about 10-15 minues to reflect here through the reporting scripts, so please don't work on the same stop names again right afterwards. --></p>
+	</small>
 	</div>
 </div><!-- right side over-->
 </div><!-- row over-->
 
 
 <br>
-<p>Mapillary full view: 
+<!-- <p>Mapillary full view: 
 <a class="badge badge-secondary" data-toggle="collapse" href="#collapseMapillary" role="button" aria-expanded="false" aria-controls="collapseMapillary">Show/Hide</a>
 </p>
 <div class="collapse hide" id="collapseMapillary">
 <iframe id="mapillary" height="400" style="width:100%;"></iframe>
-</div>
+</div> -->
 
 
-<p id="keyStatus"></p>
+<!-- <p id="keyStatus"></p> -->
 </div> <!-- End of container-fluid-->
 
 

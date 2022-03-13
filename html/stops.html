@@ -30,9 +30,11 @@
 <script src="lib/Leaflet.Control.Custom.js"></script>
 <script src="lib/leaflet-providers.js"></script>
 <script src="lib/leaflet-hash.min.js"></script>
+<script src="lib/leaflet-lasso.min.js"></script>
+
 <style>
 body {
-    font-size: 0.85em;
+    font-size: 1em;
 }
 #map {
 height: 85vh;
@@ -122,10 +124,21 @@ textarea {
 <div class="container-fluid">
 <div class="row">
 <div class="col-md-4">
-    <p><button onclick="unmapped()">Toggle unmapped stops</button> | <span id="stopsTable_status">Loading..</span></p>
-    <div id="stopsTable"></div>
+    <p><a class="badge badge-secondary" data-toggle="collapse" href="#collapseStopsTable" role="button" aria-expanded="false" aria-controls="collapseStopsTable">Show/Hide</a> | <small><button onclick="unmapped()">Toggle unmapped</button> | <span id="stopsTable_status">Loading..</span></small></p>
+    <div class="collapse show" id="collapseStopsTable">
+        <div id="stopsTable"></div>
+    </div>
     <!-- <button onclick="loadRoutes()">Load routes for selected stop</button>  -->
-    <button onclick="deleteStop()" class="btn btn-danger btn-sm">Delete Stop</button>
+    <div class="row">
+        <div class="col-md-6">
+            
+        </div>
+        <div class="col-md-6">
+            <button onclick="deleteStop()" class="btn btn-danger btn-sm">Delete Stop</button>
+        </div>
+    </div>
+    <p></p>
+    
 </div>
 
 <div class="col-md-8">

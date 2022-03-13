@@ -42,3 +42,10 @@ body {
 .bigSelect {
     height: 2em;
 }
+
+.rightside {
+    text-align: right;
+    padding-right: 0;
+}
+
+

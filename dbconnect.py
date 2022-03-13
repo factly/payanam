@@ -3,6 +3,7 @@
 import psycopg2, json, sys, os, time, datetime
 from psycopg2 import pool, IntegrityError, extras
 import pandas as pd
+from pandas.io.sql import DatabaseError
 
 import commonfuncs as cf
 
@@ -67,10 +68,15 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
         
     elif output in ('df','list','oneJson','column'):
         # df
-        if fillna:
-            df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False).fillna('') 
-        else:
-            df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False)
+        try:
+            if fillna:
+                df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False).fillna('') 
+            else:
+                df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False)
+        except DatabaseError as e:
+            cf.logmessage("DatabaseError!")
+            cf.logmessage(e)
+            raise
         # coerce_float : need to ensure mobiles aren't screwed
         
         # make all colunm headers lowercase

@@ -17,6 +17,7 @@ import dbconnect
 class loadConfig_payload(BaseModel):
     key: Optional[str] = None
     value: Optional[str] = None
+    depotFlag: Optional[bool] = False
 
 @app.post("/API/loadConfig", tags=["config"]) 
 def loadconfig(req: loadConfig_payload):
@@ -27,10 +28,15 @@ def loadconfig(req: loadConfig_payload):
     where space_id = {space_id}"""
     df = dbconnect.makeQuery(s1, output='df')
     returnD = { 'message': "success"}
+    configD = {}
     if len(df):
-        returnD['config'] = df.to_dict(orient='records') 
-    else:
-        returnD['config'] = []
+        for r in df.to_dict(orient='records'):
+            configD[r['config_key']] = r['config_value']
+    returnD['config'] = configD
+    
+    if req.depotFlag:
+        s2 = f"select distinct depot from routes where space_id={space_id} and depot is not null and depot != '' "
+        returnD['depots'] = dbconnect.makeQuery(s2, output='column')
     
     return returnD
 
