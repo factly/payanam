@@ -22,8 +22,6 @@ var globalSelectedStop = {};
 var globalStopNum = 0;
 var patternChanged = false;
 var globalNotMapped = 0;
-var globalPatternCounter = 0;
-var globalPatternStopLookup = {};
 
 // ACE editor
 var stopsEntry = ace.edit("stopsEntry");
@@ -375,14 +373,13 @@ function loadPattern(pid) {
             clearUI();
             let sortableContent = '';
             globalNotMapped = 0;
-            globalPatternStopLookup = returndata['id_stopId_lookup'];
             returndata.pattern_stops.forEach((r,N) => {
-                sortableContent += makeStopDiv(r.stop_id, r.name, r.id);
+                sortableContent += makeStopDiv(r.stop_id, r.name);
                 if(!r.latitude) globalNotMapped ++;
             });
             $('#stops_order_holder').html(sortableContent);
             reNumber();
-            $('#savePattern_status').html(`Pattern ${pid} loaded. ${returndata.pattern_stops.length} stops total, ${globalNotMapped} not mapped yet.`);
+            $('#savePattern_status').html(`Pattern loaded. ${returndata.pattern_stops.length} stops total, ${globalNotMapped} not mapped yet.`);
 
             // map it
             if(allStopsLoadedFlag) {
@@ -509,18 +506,11 @@ function addPattern() {
 }
 
 function savePattern() {
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
-    let stops = [];
-    pattern_stop_ids.forEach(pid => {
-        if(globalPatternStopLookup[pid]) {
-                stops.push(globalPatternStopLookup[pid]);
-            }
-    });
     let payload = {
         "pattern_id": $('#pattern_chosen').val(),
-        "stops": stops
+        "stops": Sortable.get(document.getElementById('stops_order_holder')).toArray()
     };
-    console.log("savePattern:", payload);
+    // console.log("savePattern:", payload);
     $('#savePattern_status').html(`Saving...`);
     $.ajax({
         url: `/API/editPattern`,
@@ -553,7 +543,6 @@ function clearUI() {
     $('#suggestions').html(``);
     matchesLayer.clearLayers();
     $('#autoMapPattern_status').html(``);
-    globalPatternCounter = 0;
 }
 
 // ####################################
@@ -638,6 +627,14 @@ function processAllStops() {
     $('#stopPicker').change(function () {
         if (! $(this).val()) return;
         addStop2Pattern($(this).val());
+        
+        // let stop_id = $(this).val();
+        // let stopRow = allStopsi[stop_id];
+        // let sortableContent = makeStopDiv(stop_id, stopRow.name);
+        // $('#stops_order_holder').append(sortableContent);
+        // reNumber();
+        // routeLines(update=true);
+        // mapStops();
     });
 
 }
@@ -645,9 +642,7 @@ function processAllStops() {
 function addStop2Pattern(stop_id, redraw=true) {
     console.log("addStop2Pattern",stop_id);
     let stopRow = allStopsi[stop_id];
-    globalPatternCounter ++;
-    globalPatternStopLookup[String(globalPatternCounter)] = stop_id; // add to global json
-    let sortableContent = makeStopDiv(stop_id, stopRow.name, String(globalPatternCounter));
+    let sortableContent = makeStopDiv(stop_id, stopRow.name);
     $('#stops_order_holder').append(sortableContent);
     if(!redraw) return;
     reNumber();
@@ -657,23 +652,22 @@ function addStop2Pattern(stop_id, redraw=true) {
     patternChanged = true;
 }
 
-function insertStopInPattern(stop_id, pos = null) {
-    if(!pos) pos = parseInt($('#stopPosition').val());
+function insertStopInPattern(stop_id) {
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    let pos = parseInt($('#stopPosition').val());
     console.log("insertStopInPattern",stop_id, pos);
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
-
-    // redirect to simpler addStop2Pattern() if that applies
-    if((!pos && pos!=0)|| pos=='' || pos>pattern_stop_ids.length || pos < 0 ) {
+    if((!pos && pos!=0)|| pos=='' || pos>stop_ids.length || pos < 0 ) {
         addStop2Pattern(stop_id);
         return;
     }
     
-    // new strategy : create just the new html div of the new stop and use jQuery insertBefore()
-    globalPatternCounter ++;
-    globalPatternStopLookup[String(globalPatternCounter)] = stop_id; // add to global json
-    let patternEntry = makeStopDiv(stop_id, allStopsi[stop_id].name, String(globalPatternCounter));
-    // from https://api.jquery.com/insertBefore/, https://stackoverflow.com/a/6149672/4355695
-    $(patternEntry).insertBefore($(`.pattern_stop_${pattern_stop_ids[pos-1]}`));
+    stop_ids.splice(pos-1, 0, stop_id);
+    // console.log(stop_ids);
+    let sortableContent = '';
+    stop_ids.forEach((id,N) => {
+        sortableContent += makeStopDiv(id, allStopsi[id].name);
+    });
+    $('#stops_order_holder').html(sortableContent);
     reNumber();
     routeLines(update=true);
     mapStops();
@@ -681,21 +675,11 @@ function insertStopInPattern(stop_id, pos = null) {
     $('#stopPosition').val('');
     map.closePopup(); // close popup
     patternChanged = true;
-
-
-    // pattern_ids.splice(pos-1, 0, stop_id);
-    // // console.log(stop_ids);
-    // let sortableContent = '';
-    // pattern_ids.forEach((id,N) => {
-    //     sortableContent += makeStopDiv(globalPatternStopLookup[id], allStopsi[id].name, id);
-    // });
-    // $('#stops_order_holder').html(sortableContent);
-    
 }
 
 function removeStop(id) {
-    console.log("removeStop: pattern_stop_id:", id);
-    $(`.pattern_stop_${id}`).remove();
+    console.log("removeStop:", id);
+    $(`.stop_${id}`).remove();
     reNumber();
     routeLines(update=true);
     mapStops();
@@ -703,14 +687,14 @@ function removeStop(id) {
 
 }
 
-function makeStopDiv(stop_id, name, id) {
+function makeStopDiv(id, name) {
     // if(!sr) sr = $('#stops_order_holder').children().length + 1;
     let printname = name;
     if(name.length > 40) printname = name.substring(0,40) + '..';
 
-    let sortableContent = `<div class="list-group-item stop_${stop_id} pattern_stop_${id}" data-id="${id}" title="${name}">
+    let sortableContent = `<div class="list-group-item stop_${id}" data-id="${id}" title="${name}">
     <div onclick="clickPatternStop('${id}')"><span class="stopNum ${id}"></span>. ${printname} 
-    <small>${stop_id}<span class="unmapped ${stop_id}"></span></small></div>
+    <small>${id}<span class="unmapped ${id}"></span></small></div>
         
        
         <div class="removeStopButton" onclick="removeStop('${id}')">x</div>
@@ -719,14 +703,14 @@ function makeStopDiv(stop_id, name, id) {
     return sortableContent;
 
     /* <div class="timeOffsetHolder"><small>
-            <input class="narrow" class="timeOffset ${stop_id}">min
+            <input class="narrow" class="timeOffset ${id}">min
         </small></div>
     */
 }
 
 function reNumber() {
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
-    pattern_stop_ids.forEach((id, N) => {
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    stop_ids.forEach((id, N) => {
         $(`.stopNum.${id}`).html(String(N+1));
     });
 }
@@ -868,8 +852,8 @@ function addStopsByName() {
 // ROUTE ON MAP
 
 function routeLines(update=false) {
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
-    if(!pattern_stop_ids.length) return;
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    if(!stop_ids.length) return;
 
     if(patternLayer.getLayers().length && map.hasLayer(patternLayer) && !update) {
         // toggle off if already loaded and visible
@@ -879,12 +863,8 @@ function routeLines(update=false) {
     patternLayer.clearLayers();
 
     let arr1 = [];
-    pattern_stop_ids.forEach(pid => {
-        let s = globalPatternStopLookup[pid];
-        if(!s) return;
-
+    stop_ids.forEach(s => {
         let srow = allStopsi[s];
-        if(!srow) return;        
         if(! checklatlng(srow.latitude,srow.longitude)) return;
         arr1.push([srow.latitude,srow.longitude]);
     });
@@ -901,26 +881,21 @@ function routeLines(update=false) {
     if (!map.hasLayer(patternLayer)) map.addLayer(patternLayer);
 }
 
-
 function mapStops() {
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
-    if(!pattern_stop_ids.length) return;
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    if(!stop_ids.length) return;
 
     stopsLayer.clearLayers();
     let stopCounter = 0;
 
-    for(let i=1;i<=pattern_stop_ids.length;i++) {
-        let stop_id = globalPatternStopLookup[pattern_stop_ids[i-1]];
-        if(!stop_id) continue;
-        let srow = allStopsi[stop_id];
-        if(!srow) continue;
-
+    for(let i=1;i<=stop_ids.length;i++) {
+        let srow = allStopsi[stop_ids[i-1]];
         if(checklatlng(srow.latitude,srow.longitude)) {
 
             let tooltipContent = `${i}: ${srow.name}
-            <br><small>${stop_id}</small>`;
+            <br><small>${stop_ids[i-1]}</small>`;
             let popupContent = `${tooltipContent}<br>
-            <button onclick="removeStop('${pattern_stop_ids[i-1]}')">Remove from pattern</button>`;
+            <button onclick="removeStop('${stop_ids[i-1]}')">Remove from pattern</button>`;
 
             var circleMarkerOptions = {
                 renderer: myRenderer,
@@ -942,14 +917,14 @@ function mapStops() {
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
             .bindPopup(popupContent)
             .on('click', e=> {
-                clickPatternStop(pattern_stop_ids[i-1]);
+                clickPatternStop(stop_ids[i-1]);
             });
             marker.properties = srow;
-            marker.properties['id'] = stop_id;
+            marker.properties['id'] = stop_ids[i-1];
             marker.addTo(stopsLayer);
         } else {
-            globalUnMappedStops.push(stop_id);
-            $(`.unmapped.${stop_id}`).html(` (unmapped)`);
+            globalUnMappedStops.push(stop_ids[i-1]);
+            $(`.unmapped.${stop_ids[i-1]}`).html(` (unmapped)`);
         }
     }
     if (!map.hasLayer(stopsLayer)) map.addLayer(stopsLayer);
@@ -1118,22 +1093,12 @@ map.addControl( new L.Control.Search({
 // #################################
 // SUGGESTIONS
 
-function clickPatternStop(pattern_stop_id) {
+function clickPatternStop(stop_id) {
     if(!allStopsLoadedFlag) return;
     $('#suggestions').html(``);
     matchesLayer.clearLayers();
 
-    let stop_id = globalPatternStopLookup[pattern_stop_id];
-    if(!stop_id) {
-        console.log(`clickPatternStop: no stop_id found corresponding to ${pattern_stop_id} in globalPatternStopLookup`);
-        return;
-    }
-    globalSelectedPatternStopId = pattern_stop_id;
     globalSelectedStop = allStopsi[stop_id];
-    if(!globalSelectedStop) {
-        console.log(`clickPatternStop: no stop row found corresponding to ${globalSelectedStop} in allStopsi`);
-        return;
-    }
     console.log("clickPatternStop:",globalSelectedStop);
     $('#stopInfo').html(globalSelectedStop.name);
     if(globalSelectedStop.latitude) {
@@ -1145,17 +1110,17 @@ function clickPatternStop(pattern_stop_id) {
     }
 
     // also find out which number in the pattern this is
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
-    globalStopNum = pattern_stop_ids.findIndex(p => {return p == pattern_stop_id});
+    let pattern = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+    globalStopNum = pattern.findIndex(p => {return p == stop_id});
     // findIndex: https://www.w3schools.com/jsref/jsref_findindex.asp
     if(globalStopNum < 0) globalStopNum=0; // if not found, assume zero
     globalStopNum ++;
-    console.log("globalStopNum:",globalStopNum, "globalSelectedPatternStopId:",globalSelectedPatternStopId );
+    console.log("globalStopNum:",globalStopNum);
 
 }
 
 function loadSuggestions() {
-    console.log(`loadSuggestions: pattern_stop_id:${globalSelectedPatternStopId}, stop:${globalSelectedStop}`);
+    console.log("loadSuggestions:",globalSelectedStop);
     if(!globalSelectedStop.name) return;
     let bounds = map.getBounds();
     let payload = {
@@ -1163,12 +1128,12 @@ function loadSuggestions() {
         "minLat": bounds._southWest.lat, 
         "maxLat": bounds._northEast.lat, 
         "minLon": bounds._southWest.lng, 
-        "maxLon": bounds._northEast.lng
+        "maxLon": bounds._northEast.lng, 
         // "fuzzy": true,
         // "accuracy": 0.7,
-        // "maxRows": 10
+        // "maxRows": 10,
+        "depot": $('#route_depot').val()
     };
-    if($('#route_depot').val().length) payload['depot'] = $('#route_depot').val();
     console.log(payload);
     $('#suggestions').html(`Loading..`);
     
@@ -1190,7 +1155,7 @@ function loadSuggestions() {
                 let tooltipContent = `${s.name}`;
                 let popupContent = `Suggested stop: <b>${s.name}</b><br>
                 id: ${s.id}, similarity score: ${s.score.toFixed(3)}<br>
-                <b><a href="javascript:{}" onclick=replacePatternStop('${globalSelectedPatternStopId}','${s.id}')>Click here</a></b>
+                <b><a href="javascript:{}" onclick=replacePatternStop('${globalSelectedStop.id}','${s.id}')>Click here</a></b>
                 to replace current stop (${globalSelectedStop.id})<br> 
                 in the pattern at position ${globalStopNum}
                 `;
@@ -1224,22 +1189,26 @@ function loadSuggestions() {
 
 }
 
-function replacePatternStop(pattern_stop_id, new_stop_id) {
-    console.log(`replacePatternStop: pattern_stop_id:${pattern_stop_id}, new_stop_id:${new_stop_id}`);
-    let pattern_stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
+function replacePatternStop(orig_id, new_id) {
+    console.log("replacePatternStop:",orig_id, new_id);
+    let stop_ids = Sortable.get(document.getElementById('stops_order_holder')).toArray();
     
-    // TO DO validation: ensure that pattern_stop_id is present in pattern_stop_ids array 
-
-    // new strategy: use jquery replaceWith: https://api.jquery.com/replaceWith/
-    globalPatternStopLookup[pattern_stop_id] = new_stop_id;
-    newContent = makeStopDiv(new_stop_id, allStopsi[new_stop_id].name, pattern_stop_id);
-    $(`.pattern_stop_${pattern_stop_id}`).replaceWith(newContent);
-
+    console.log(`Old stop: ${stop_ids[globalStopNum-1]}, checking: ${orig_id == stop_ids[globalStopNum-1]}`);
+    stop_ids[globalStopNum-1] = new_id;
+    console.log(`New stop: ${stop_ids[globalStopNum-1]}`);
+    
+    // re-making the pattern
+    let sortableContent = '';
+    stop_ids.forEach((id,N) => {
+        sortableContent += makeStopDiv(id, allStopsi[id].name);
+    });
+    $('#stops_order_holder').html(sortableContent);
     reNumber();
     routeLines(update=true);
     mapStops();
+
     map.closePopup(); // close popup
-    patternChanged = true;
+
 }
 
 

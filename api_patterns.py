@@ -225,8 +225,18 @@ def loadPattern(req: loadPattern_payload):
     """
     df1 = dbconnect.makeQuery(s1, output='df', keepCols=True)
     returnD['pattern_id'] = req.pattern_id
-    returnD['pattern_stops'] = df1.to_dict(orient='records')
+    returnD['pattern_stops'] = []
+    returnD['id_stopId_lookup'] = {}
+    
+    if len(df1):
+        returnD['pattern_stops'] = df1.to_dict(orient='records')
+
+        # id to stop_id lookup
+        for row in returnD['pattern_stops']:
+            returnD['id_stopId_lookup'][row['id']] = row['stop_id']
+        
 
     return returnD
+
 
 
