@@ -23,26 +23,28 @@ def loadRoutesList(req: loadRoutesList_payload):
     cf.logmessage("loadRoutes api call")
     space_id = int(os.environ.get('SPACE_ID',1))
 
-    s1 = f"""select id, name, depot, description from routes 
+    s1 = f"""select id, name, depot from routes 
     where space_id = {space_id}
     order by depot, name"""
     df = dbconnect.makeQuery(s1, output='df',keepCols=True)
-    df.rename(columns={'name':'text'}, inplace=True)
+
+    df['depot'].replace(to_replace={'':'MISC'}, inplace=True)
+    # df.rename(columns={'name':'text'}, inplace=True)
 
     returnD = { 'message': "success"}
     
-    # TO DO: group by depots, route groups etc in this format: 
-    # https://select2.org/data-sources/formats#grouped-data
-    returnD['routes'] = []
-    for depot in df['depot'].unique():
-        row = {}
-        if not len(depot): row['text'] = "MISC"
-        else: row['text'] = depot
-        df2 = df[df['depot']==depot]
-        row['children'] = df2.to_dict(orient='records')
-        returnD['routes'].append(row)
+    # # TO DO: group by depots, route groups etc in this format: 
+    # # https://select2.org/data-sources/formats#grouped-data
+    # returnD['routes'] = []
+    # for depot in df['depot'].unique():
+    #     row = {}
+    #     if not len(depot): row['text'] = "MISC"
+    #     else: row['text'] = depot
+    #     df2 = df[df['depot']==depot]
+    #     row['children'] = df2.to_dict(orient='records')
+    #     returnD['routes'].append(row)
 
-    # returnD['routes'] = df.to_dict(orient='records')
+    returnD['routes'] = df.to_dict(orient='records')
     returnD['depots'] = df['depot'].unique().tolist()
 
     return returnD
@@ -169,5 +171,20 @@ def loadRouteDetails(req: loadRouteDetails_payload):
     #     df2 = df1[df1['pattern_id'] == pid]
     #     returnD['pattern_stops'][pid] = df2.to_dict(orient='records')
 
+    return returnD
+
+
+##########
+
+# get depots list
+@app.get("/API/getDepots", tags=["routes"])
+def getDepots():
+    cf.logmessage("getDepots api call")
+    returnD = { "message": "success"}
+    space_id = int(os.environ.get('SPACE_ID',1))
+
+    s1 = f"select distinct depot from routes where space_id={space_id} order by depot"
+    depotsList = dbconnect.makeQuery(s1, output='column')
+    returnD['depots'] = depotsList
     return returnD
 

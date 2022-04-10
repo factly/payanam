@@ -41,6 +41,10 @@ function loadTimings() {
         return;
     }
     let pid = $('#pattern_chosen').val();
+    if(! pid ||  ! pid.length) {
+        $('#saveTimings_status').html(`Load a pattern first.`);
+        return;
+    }
 	let payload = {
         "pattern_id": pid,
     };
@@ -69,7 +73,7 @@ function loadTimings() {
                 let tripCol = {
                     title: hhmm,
                     field: t.id,
-                    headerFilter:'input', width:50,
+                    headerFilter:'input', width:70,
                     headerSort:false, 
                     editor:true, editorParams:{mask:"99:99"},
                     headerTooltip: `trip_id: ${t.id}`
@@ -92,6 +96,9 @@ function loadTimings() {
             tabulator_stoptimes.on("cellEdited", function(cell){
                 globalTimingsChanged=true;
             });
+
+            // Pagination of trips: showing 10 trips only at a time
+            // $('#timingsPaginationHolder').html(``);
 
             $('#saveTimings_status').html(`Timings loaded for pattern ${pid}`);
     	},
