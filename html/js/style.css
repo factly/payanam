@@ -49,3 +49,11 @@ body {
 }
 
 
+/* selectize */
+
+.selectize-control.plugin-remove_button .remove-single {
+    right: auto;
+}
+/*.remove-single:hover, .remove-single:visited, .remove-single:active {
+    text-decoration:none;
+}*/

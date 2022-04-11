@@ -332,17 +332,23 @@ def deleteStops(req: deleteStops_payload):
 ###############
 
 @app.get("/API/searchStops", tags=["stops"])
-def searchStops(q: Optional[str] = None ):
+def searchStops(
+        q: str,
+        mapped: Optional[str] = 'y'
+     ):
     """
     for working with https://opengeo.tech/maps/leaflet-search/examples/ajax-jquery.html
     response should be like: [{"loc":[41.57573,13.002411],"title":"black"}]
     """
     space_id = int(os.environ.get('SPACE_ID',1))
+    mappedQuery = '';
+    if mapped.lower() == 'y':
+        mappedQuery = "and latitude is not null and longitude is not null"
+    
     s1 = f"""select name, latitude, longitude from stops_master
     where space_id = {space_id}
     and name ilike '%{q}%'
-    and latitude is not null
-    and longitude is not null
+    {mappedQuery}
     order by name
     """
     df = dbconnect.makeQuery(s1, output='df')

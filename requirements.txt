@@ -5,3 +5,4 @@ aiofiles
 pandas
 psycopg2-binary
 jellyfish
+brotli-asgi

@@ -171,6 +171,10 @@ $(document).ready(function () {
         copyFromPattern($(this).val());
     });
 
+    $('#depot_select').change(function () {
+        if (! $(this).val()) return;
+        filterRoutesByDepot($(this).val());
+    })
     // //ACE editor : listen for changes
     // stopsEntry.session.on('change', function(delta) {
     //     global_stopsEntry_changed = true;
@@ -200,37 +204,62 @@ function loadRoutesList(route_id) {
             });
             $('#depot_select').html(depotContent);
 
+            // format like https://stackoverflow.com/a/60733010/4355695
+            // let selectizeOptions = [];
+            let selectizeOptgroups = [];
+            // returndata.routes.forEach(r => {
+            //     selectizeOptions.push({depot: r.depot, value: r.id, name: r.name});
+            // })
+            // save in global var
             globalRoutesList = returndata.routes;
-            
-            $('#routes_list').select2({
-                data: returndata.routes,
+            returndata.depots.forEach(d => {
+                selectizeOptgroups.push({value: d, label:d});
+            });
+
+            let routeSelectize = $('#routes_list').selectize({
                 placeholder: "Choose a Route",
-                width: "300px",
-                allowClear: true
+                options: returndata.routes,
+                labelField: 'name',
+                valueField: 'id',
+                optgroups: selectizeOptgroups,
+                optgroupField: 'depot',
+                searchField: ['name','depot'],
+                maxItems: 1,
+                plugins: ['remove_button'], // spotted here: https://stackoverflow.com/q/51611957/4355695
+                // plugins: ['optgroup_columns', 'remove_button'],
+                render: {
+                    optgroup_header: function(data, escape) {
+                        return `<div class="optgroup-header">${escape(data.label)}</div>`;
+                    }
+                },
+                onChange(route_id) {
+                    console.log(`routeSelectize onChange event, route_id: ${route_id}`);
+                    if(!route_id || !route_id.length) {
+                        console.log('clearing things');
+                        clearTimings();
+                        clearUI();
+                        clearRoute();
+                        clearPattern();
+                        return;
+                    }
+                    loadRouteDetails(route_id);
+                    
+                },
+                onClear(){
+                    console.log(`routes_list onClear event`);
+                    clearTimings();
+                    clearUI();
+                    clearRoute();
+                    clearPattern();
+                }
             });
-
-            $('#routes_list').val(null).trigger('change.select2'); // select-none, from https://select2.org/programmatic-control/add-select-clear-items#clearing-selections
-
-            $('#routes_list').on('change', function (e) {
-                let route_id = $('#routes_list').val();
-                // console.log(`routes_list select2:select event, ${route_id} chosen`);
-                if(!route_id) return;
-
-                loadRouteDetails(route_id);
-                $('#routeActionButton').html(`Update route info`);
-            });
-
-            $('#routes_list').on('select2:clear', function (e) {
-                clearTimings();
-                clearUI();
-                clearRoute();
-            });
-
+                
             $('#route_status').html(`All routes loaded.`);
 
             // load a route from URLParams
             if(URLParams['route']) {
-                $('#routes_list').val(URLParams['route']).trigger('change.select2').trigger('change');
+                var selectize = routeSelectize[0].selectize;
+                selectize.setValue(URLParams['route'],silent=false)
             }
         },
         error: function (jqXHR, exception) {
@@ -238,6 +267,23 @@ function loadRoutesList(route_id) {
             $('#route_status').html(jqXHR.responseText);
         }
     });
+}
+
+function filterRoutesByDepot(depot) {
+    let newList = globalRoutesList.filter(r => {return r.depot === depot}); 
+    console.log(`filterRoutesByDepot: after filtering by depot=${depot}, routes: ${newList.length}`);
+    
+    // clear selected, from https://stackoverflow.com/a/55047781/4355695
+    // $('routes_list').find('.selectized').each(function(index, element) { element.selectize && element.selectize.clear() })
+    $("#routes_list")[0].selectize.clear();
+
+    // clear present routes list
+    // var selectize = $('#routes_list')[0].selectize;
+    $("#routes_list")[0].selectize.clearOptions(silent=true);
+    $("#routes_list")[0].selectize.addOption(newList);
+
+    // populate depot field in case creating new route
+    $('#route_depot').val(depot);
 }
 
 function routeAction() {
@@ -309,9 +355,11 @@ function loadRouteDetails(route_id, pattern_id=null) {
             $('#route_name').val(returndata.route.name);
             $('#route_description').val(returndata.route.description);
             $('#route_depot').val(returndata.route.depot);
+            $('#routeActionButton').html(`Update route info`);
 
-            // to do: load patterns
-            $('#pattern_add').val('');
+            // load patterns
+            clearPattern();
+            
             let patternsContent = '';
             let sortableContent = '';
 
@@ -342,6 +390,8 @@ function clearRoute(){
     $('#route_depot').val('');
 
     // to do: clear patterns
+    $('#pattern_chosen').html(``);
+    $('#patterns_order_holder').html(``);
 
     $('#routeActionButton').html(`Create Route`);
 }
@@ -354,6 +404,10 @@ function loadPattern(pid) {
     clearTimings();
     clearUI();
     let patternHolder = globalRoute.patterns.filter(r => {return r.id === pid});
+    if(!patternHolder.length) {
+        console.log(`No patterns under route: ${globalRoute}`);
+        return;
+    }
     // console.log("pattern json:",patternHolder[0]);
     $('.pattern_selected').html(`${patternHolder[0].name} <small><small>(${pid})</small></small>`);
 
@@ -556,6 +610,14 @@ function clearUI() {
     globalPatternCounter = 0;
 }
 
+function clearPattern() {
+    $('#pattern_add').val('');
+    $('.pattern_selected').html(``);
+    $('#stops_order_holder').html(``);
+    $('#savePattern_status').html(``);
+
+}
+
 // ####################################
 // STOPS
 
@@ -628,11 +690,9 @@ function processAllStops() {
 
     $('#stopPicker').html(selectContent);
 
-    $('#stopPicker').select2({
-        // data: returndata.results,
+    $('#stopPicker').selectize({
         placeholder: "Add a Stop",
-        width: "100%",
-        allowClear: true
+        plugins: ['remove_button'] // spotted here: https://stackoverflow.com/q/51611957/4355695
     });
 
     $('#stopPicker').change(function () {
@@ -644,6 +704,11 @@ function processAllStops() {
 
 function addStop2Pattern(stop_id, redraw=true) {
     console.log("addStop2Pattern",stop_id);
+    if(! $('#pattern_chosen').val() ) {
+        console.log(`addStop2Pattern: No pattern chosen so cannot add a stop`);
+        alert(`Please choose or add a pattern first.`);
+        return;
+    }
     let stopRow = allStopsi[stop_id];
     globalPatternCounter ++;
     globalPatternStopLookup[String(globalPatternCounter)] = stop_id; // add to global json
@@ -787,6 +852,11 @@ function copyFromPattern(pid) {
 
 function addStopsByNameOpenModal() {
     // do other checks as needed
+    if(! $('#pattern_chosen').val() ) {
+        console.log(`addStopsByNameOpenModal: No pattern chosen so cannot add stops`);
+        alert(`Please choose or add a pattern first.`);
+        return;
+    }
     stopsEntry.setValue(``);
     $('#nameStops_status').html(``);
     $('#modal_nameStops').modal('show');

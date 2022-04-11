@@ -15,6 +15,7 @@ import dbconnect
 
 class loadTimings_payload(BaseModel):
     pattern_id: str
+    page: Optional[int] = 1
 
 @app.post("/API/loadTimings", tags=["timings"])
 def loadTimings(req: loadTimings_payload):
@@ -36,17 +37,22 @@ def loadTimings(req: loadTimings_payload):
     returnD['stops'] = df1.to_dict(orient='records')
 
     # trips
+
     s2 = f"""select * from trips 
     where space_id={space_id} 
     and pattern_id = '{pattern_id}'
     order by start_time
     """
+    # TO DO: Pagination of trips if too many
+    # offset {(req.page-1)*10}
+    # fetch first 10 rows only
     df2 = dbconnect.makeQuery(s2, output='df', keepCols=True, fillna=True)
     df2['start_time'] = df2['start_time'].apply(lambda x: str(x)[:5])
 
     returnD['num_trips'] = len(df2)
     returnD['trips'] = df2.to_dict(orient='records')
 
+    
 
     # timings
     if len(df2):

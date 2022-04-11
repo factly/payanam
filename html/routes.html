@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="lib/leaflet-search.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="lib/flatpickr.min.css" rel="stylesheet">
+<link rel="stylesheet" href="lib/selectize.bootstrap4.min.css" />
 
 <link href="js/style.css" rel="stylesheet">
 
@@ -43,7 +44,7 @@
 <script src="lib/select2.min.js"></script>
 <!-- jsDelivr :: Sortable :: Latest (https://www.jsdelivr.com/package/npm/sortablejs) -->
 <script src="lib/Sortable.min.js"></script>
-
+<script src="lib/selectize.min.js"></script>
 <style>
 /*body {
     font-size: 0.85em;
@@ -166,6 +167,13 @@ width: 100%;
     color: rgb(155, 155, 155);
 }
 
+/* selectize */
+.selectize-dropdown .optgroup-header {
+    font-weight: bold;
+    background-color: #e6f2ff!important; /*light blue*/
+}
+
+
 </style>
 </head>
 <body>
@@ -175,7 +183,14 @@ width: 100%;
 <div class="row routeBand">
     <div class="col-md-5">
         <h4>Routes</h4>
-        <p>Select a route: <select id="depot_select" class="bigSelect"></select> <select id="routes_list"></select></p>
+        <div class="row">
+            <div class="col-md-3">
+                <select id="depot_select" class="bigSelect"></select>
+            </div>
+            <div class="col-md-9">
+                <select id="routes_list"></select>
+            </div>
+        </div>
         <p>Route name: <input id="route_name" placeholder="route name">
             &nbsp;&nbsp;&nbsp;&nbsp;<small>..or fill these to create a new route</small></p>
         <p>Description: <input id="route_description"></p>
@@ -187,7 +202,7 @@ width: 100%;
     <div class="col-md-3">
         <h4>Patterns</h4>
         <p>Active Pattern: <select id="pattern_chosen" class="bigSelect">
-            <option value=""><- Select a Route</option>
+            <option value="">Select a Pattern</option>
         </select></p>
         <p>Delete this pattern <span class="pattern_selected"></span> <button class="btn btn-sm btn-danger" onclick="deletePattern()">Delete</button></p>
         <p>Add Pattern: <input id="pattern_add"><button onclick="addPattern()">Add</button></p>
@@ -280,7 +295,14 @@ width: 100%;
     <div class="col-md-10">
         <!-- <p>Trips and Per-stop timings</p> -->
         <div id="tabulator_stoptimes"><button onclick="loadTimings()" class="btn btn-sm btn-secondary">Click to load timings</button></div>
-        <p>Add a new trip starting at: <input class="narrow2" id="newTripStartTime" value="06:00"> <button onclick="addTrip()" class="btn btn-sm btn-warning">Add Trip</button> <span id="addTrip_status"></span></p>
+        <div class="row">
+            <div class="col-md-6">
+                <p>Add a new trip starting at: <input class="narrow2" id="newTripStartTime" value="06:00"> <button onclick="addTrip()" class="btn btn-sm btn-warning">Add Trip</button> <span id="addTrip_status"></span></p>
+            </div>
+            <div class="col-md-6">
+                <p align="right" id="timingsPaginationHolder"></p>
+            </div>
+        </div>
         <p>Delete this trip: <select id="trip2Delete" class="bigSelect">
             <option value="">Select trip</option>
         </select> <button onclick="deleteTrip()" class="btn btn-sm btn-danger">Delete Trip</button> <span id="deleteTrip_status"></span></p>
@@ -371,10 +393,13 @@ width: 100%;
                 <span id="nameStops_status"></span> &nbsp;&nbsp;&nbsp;&nbsp;
                     <button type="button" class="btn btn-success btn-sm" onclick="addStopsByName()">
                     Add these Stops to the Pattern</button><!-- data-dismiss="modal"-->
+
             </div>
         </div>
     </div>
 </div>
+
+
 
 <div class="footer"></div>
 

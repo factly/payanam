@@ -4,7 +4,7 @@ import os, time
 from typing import Optional, List
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
-from fastapi import HTTPException, Header, File, UploadFile
+from fastapi import HTTPException, Header, File, UploadFile, Form
 import pandas as pd
 import zipfile, io
 
@@ -20,13 +20,16 @@ import dbconnect
 # 
 
 @app.post("/API/uploadGTFS", tags=["gtfs"])
-def uploadGTFS(file1: UploadFile = File(...)):
+def uploadGTFS(
+        file1: UploadFile = File(...),
+        depot: Optional[str] = Form(None)
+        # depotsIncluded: Optional[bool] = Form(False)
+    ):
     contents = file1.file.read()
-    group_name = file1.filename.replace('.zip','')
-    print(len(contents), group_name)
+    groupName = file1.filename.replace('.zip','')
+    print(len(contents), groupName)
     with zipfile.ZipFile(io.BytesIO(contents)) as z:
         gtfsFiles = z.namelist()
-        print(a)
         if 'agency.txt' in gtfsFiles:
             agencydf = pd.read_csv(io.BytesIO(z.read('agency.txt')))
         else:
@@ -52,5 +55,17 @@ def uploadGTFS(file1: UploadFile = File(...)):
         else:
             stopdf = None
 
+        if 'calendar.txt' in gtfsFiles:
+            calendardf = pd.read_csv(io.BytesIO(z.read('calendar.txt')))
+        else:
+            calendardf = None
 
-    return {"filename": file1.filename, "name": group_name}
+    # ok out of the zip opening
+    if depot: depotName = depot
+    else: depotName = groupName
+
+    # TO DO: Validation
+
+    # 
+
+    return {"filename": file1.filename, "name": groupName}
