@@ -1,5 +1,6 @@
 // routes-timings.js
 
+const tripBatch = 10
 var globalTimingsChanged = false;
 var globalTripsPages = 0;
 
@@ -101,14 +102,13 @@ function loadTimings(pageNum=1) {
 
             // Pagination of trips: showing 10 trips only at a time
             if(pageNum == 1) {
-                let tripBatch = 10
                 globalTripsPages = Math.ceil(returndata.num_trips/tripBatch);
             }
             let prev = ``;
             if(pageNum > 1) prev = `<button onclick="loadTimings(${pageNum-1})">prev</button>&nbsp;&nbsp;`;
             let next = ``;
             if(pageNum < globalTripsPages) next = `&nbsp;&nbsp;<button onclick="loadTimings(${pageNum+1})">next</button>`;
-            $('#timingsPaginationHolder').html(`Page: ${prev}${pageNum}${next}`);
+            $('#timingsPaginationHolder').html(`Page: ${prev}${pageNum}${next} of ${globalTripsPages}`);
 
             $('#saveTimings_status').html(`Timings loaded for pattern ${pid}`);
     	},
@@ -235,3 +235,6 @@ function resetTimings() {
     }
     loadTimings();
 }
+
+// TO DO: Download full route's timings as excel, and let user edit offline and upload it again
+

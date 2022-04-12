@@ -77,7 +77,8 @@ def saveConfig(req: saveConfig_payload):
                 u1 = f"""update config
                 set config_value = '{row['value']}',
                 last_updated = CURRENT_TIMESTAMP
-                where id = '{oldConfigs[row['key']]['id']}'
+                where space_id = '{space_id}'
+                and id = '{oldConfigs[row['key']]['id']}'
                 """
                 u1Count = dbconnect.execSQL(u1)
                 returnD['updates'] += u1Count

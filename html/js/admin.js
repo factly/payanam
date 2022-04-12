@@ -5,6 +5,7 @@
 // ###########################################################
 // RUN ON PAGE LOAD
 $(document).ready(function() {
+    // load configs, then after that run loadConfigSettings() function here
     loadConfig(callbackFlag=true, callbackFunc=loadConfigSettings, depotFlag=true);
     
     fetchGTFSexports();

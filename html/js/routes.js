@@ -376,6 +376,10 @@ function loadRouteDetails(route_id, pattern_id=null) {
 
             $('#route_status').html(`Loaded route id ${route_id}`);
 
+            // change URL to have permalink to this route
+            let plink = `?route=${route_id}#${map.getZoom()}/${map.getCenter().lat.toFixed(4)}/${map.getCenter().lng.toFixed(4)}`;
+            history.pushState({page: 1}, null, plink);
+
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);

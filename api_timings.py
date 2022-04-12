@@ -22,7 +22,7 @@ def loadTimings(req: loadTimings_payload):
     cf.logmessage("loadTimings api call")
     space_id = int(os.environ.get('SPACE_ID',1))
     pattern_id = req.pattern_id
-    returnD = { 'message': "success", "stops":[], "trips":[] }
+    returnD = { 'message': "success", "page":req.page, "stops":[], "trips":[] }
 
     # stops
     s1 = f"""select t1.stop_sequence, t1.stop_id, t2.name 
@@ -338,3 +338,7 @@ def updateTimingsForPattern(pattern_id, pattern_length):
         totalAdded = dbconnect.addTable(add_df, 'stop_times')
 
     return len(tripsList), totalAdded, totalRemoved 
+
+
+# TO DO: Download full route's timings as excel, and let user edit offline and upload it again
+
