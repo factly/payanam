@@ -22,7 +22,7 @@ def loadTimings(req: loadTimings_payload):
     cf.logmessage("loadTimings api call")
     space_id = int(os.environ.get('SPACE_ID',1))
     pattern_id = req.pattern_id
-    returnD = { 'message': "success", "stops":[], "trips":[], "num_trips":0 }
+    returnD = { 'message': "success", "stops":[], "trips":[] }
 
     # stops
     s1 = f"""select t1.stop_sequence, t1.stop_id, t2.name 
@@ -42,6 +42,8 @@ def loadTimings(req: loadTimings_payload):
     where space_id={space_id} 
     and pattern_id = '{pattern_id}'
     order by start_time
+    offset {(req.page-1)*10}
+    fetch first 10 rows only
     """
     # TO DO: Pagination of trips if too many
     # offset {(req.page-1)*10}
@@ -49,10 +51,20 @@ def loadTimings(req: loadTimings_payload):
     df2 = dbconnect.makeQuery(s2, output='df', keepCols=True, fillna=True)
     df2['start_time'] = df2['start_time'].apply(lambda x: str(x)[:5])
 
-    returnD['num_trips'] = len(df2)
     returnD['trips'] = df2.to_dict(orient='records')
 
-    
+    # fetch full count of trips if first page request.
+    # but if we got under 10 in pg1 itself then no need to query DB again.
+    if req.page == 1:
+        if  len(df2) < 10:
+            returnD['num_trips'] = len(df2)
+        else:
+            s4 = f"""select count(id) as tripcount from trips 
+            where space_id={space_id} 
+            and pattern_id = '{pattern_id}'
+            """
+            totalTrips = dbconnect.makeQuery(s4, output='oneValue')
+            returnD['num_trips'] = totalTrips
 
     # timings
     if len(df2):

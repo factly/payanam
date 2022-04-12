@@ -1,6 +1,7 @@
 // routes-timings.js
 
 var globalTimingsChanged = false;
+var globalTripsPages = 0;
 
 // ############################################
 // TABULATOR
@@ -35,7 +36,7 @@ function clearTimings(pid=null) {
     else $('#tabulator_stoptimes').html(`<button onclick="loadTimings()" class="btn btn-sm btn-secondary">Click to load timings</button>`);
 }
 
-function loadTimings() {
+function loadTimings(pageNum=1) {
     if(patternChanged) {
         alert(`Please save changes to the pattern first.`);
         return;
@@ -47,6 +48,7 @@ function loadTimings() {
     }
 	let payload = {
         "pattern_id": pid,
+        "page": pageNum
     };
     $('#saveTimings_status').html(`Loading timings for pattern ${pid}..`);
 
@@ -98,7 +100,15 @@ function loadTimings() {
             });
 
             // Pagination of trips: showing 10 trips only at a time
-            // $('#timingsPaginationHolder').html(``);
+            if(pageNum == 1) {
+                let tripBatch = 10
+                globalTripsPages = Math.ceil(returndata.num_trips/tripBatch);
+            }
+            let prev = ``;
+            if(pageNum > 1) prev = `<button onclick="loadTimings(${pageNum-1})">prev</button>&nbsp;&nbsp;`;
+            let next = ``;
+            if(pageNum < globalTripsPages) next = `&nbsp;&nbsp;<button onclick="loadTimings(${pageNum+1})">next</button>`;
+            $('#timingsPaginationHolder').html(`Page: ${prev}${pageNum}${next}`);
 
             $('#saveTimings_status').html(`Timings loaded for pattern ${pid}`);
     	},
