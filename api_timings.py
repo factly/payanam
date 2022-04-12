@@ -104,74 +104,47 @@ async def saveTimings(req: Request):
     reqD = await req.json()
     # print(reqD)
 
-    if (not len(reqD.get('data',[]))) or (not isinstance(reqD.get('data',[]),list)) :
-        raise HTTPException(status_code=400, detail="No data")
+    # validation
+    if (not len(reqD.get('edits',[]))) or (not isinstance(reqD.get('edits',[]),list)) :
+        raise HTTPException(status_code=400, detail="No edits data")
+    if (not len(reqD.get('pattern_id'))) or (not isinstance(reqD.get('pattern_id',False),str)):
+        raise HTTPException(status_code=400, detail="No pattern_id")
 
-    df1 = pd.DataFrame(reqD['data']).fillna('')
-    if 'stop_id' in df1.columns: del df1['stop_id']
-    if 'name' in df1.columns: del df1['name']
-
-    keepcols = ['stop_sequence']
-    df2 = pd.melt(df1, id_vars=keepcols, var_name='trip_id', value_name='arrival_time').sort_values(['trip_id','stop_sequence']).reset_index(drop=True)
-    # df2.to_csv('stop_times.csv',index=False)
-
-    df2['id'] = cf.assignUID(df2, length=7)
-    df2['space_id'] = space_id
-
-
-    # TO DO: time validation
-    for N in range(len(df2)):
-        if df2.at[N,'arrival_time'] == '':
-            df2.at[N,'arrival_time'] = None
-
-    tripsList = df2['trip_id'].unique().tolist()
-    if not len(tripsList):
-        raise HTTPException(status_code=400, detail="No tripIds in data")
-    trip_idSQL = cf.quoteNcomma(tripsList)
-
-
-    # fully delete existing stop_times for this pattern and replace with new
-    d1 = f"""delete from stop_times
-    where space_id = {space_id} 
-    and trip_id in ({trip_idSQL})"""
-    dCount1 = dbconnect.execSQL(d1)
-    returnD['old_count'] = dCount1
-
-    # df2.to_csv('sample.csv')
-    iStatus1 = dbconnect.addTable(df2, 'stop_times')
-    if not iStatus1:
-        returnD['new_count'] = 0
-        raise HTTPException(status_code=400, detail="Failed to add stop_times data in DB");
-
-    # update trips data
-    # get all start times
-    start_times_lookup = df2[df2['stop_sequence']==1][['trip_id','arrival_time']].copy().set_index('trip_id').to_dict(orient='index')
-    print(start_times_lookup)
-
-    # to do later: get all end times also. Or, decide to drop that and don't bother.
-
-    returnD['trips_updated'] = 0
-    for trip_id in tripsList:
-        uList = []
-        uList.append(f"last_updated = CURRENT_TIMESTAMP")
-        uList.append(f"modified_by = 'admin'")
-        if start_times_lookup.get(trip_id, False):
-            start_time = start_times_lookup[trip_id]['arrival_time']
-            uList.append(f"start_time = '{start_time}'")
-            uList.append(f"name = '{trip_id}_{start_time}'")
-        else:
-            uList.append(f"start_time = NULL")
-            uList.append(f"name = '{trip_id}'")
-
-        u1 = f"""update trips
-        set {', '.join(uList)}
+    ## 2022-04-12 : New flow : receiving only edited values from backend, so chun chun ke edit kar
+    returnD['timings_updated'] = 0
+    for e in reqD['edits']:
+        u1 = f"""update stop_times
+        set arrival_time = '{e['arrival_time']}', departure_time='{e['arrival_time']}'
         where space_id = {space_id}
-        and id = '{trip_id}'
+        and trip_id = '{e['trip_id']}'
+        and stop_sequence = {e['stop_sequence']}
         """
-        uCount = dbconnect.execSQL(u1)
-        returnD['trips_updated'] += uCount
+        u1Count = dbconnect.execSQL(u1)
+        if not u1Count:
+            cf.logmessage(f"Warning: No stop_times edit happened from trip_id: {e['trip_id']}, stop_sequence: {e['stop_sequence']}. But skipping")
+        else:
+            returnD['timings_updated'] += u1Count
 
-    returnD['new_count'] = len(df2)
+        # update trips table in case a changed timing was the first one.
+        returnD['trips_updated'] = 0
+        if e['stop_sequence'] == 1:
+            u2 = f"""update trips
+            set start_time = '{e['arrival_time']}',
+            name = '{reqD['pattern_id']}_{e['arrival_time']}',
+            last_updated = CURRENT_TIMESTAMP,
+            modified_by = 'admin'
+            where space_id = {space_id}
+            and id = '{e['trip_id']}'
+            """
+            u2Count = dbconnect.execSQL(u2)
+            if not u2Count:
+                cf.logmessage(f"Warning: No trips edit happened for trip_id: {e['trip_id']}. Skipping")
+            else:
+                returnD['trips_updated'] += u2Count
+        
+        # TO DO: cover last sequence / trip end time change also
+        # for this, better to bring the sequence length from frontend?
+    
     return returnD
 
 
@@ -228,6 +201,7 @@ async def deleteTrip(req: deleteTrip_payload):
 class addTrip_payload(BaseModel):
     pattern_id: str
     start_time: str
+    autoFill: Optional[bool] = False
 
 @app.post("/API/addTrip", tags=["timings"])
 async def deleteTrip(req: addTrip_payload):
@@ -254,10 +228,11 @@ async def deleteTrip(req: addTrip_payload):
     df2['space_id'] = space_id
     df2['trip_id'] = trip_id
     df2['id'] = cf.assignUID(df1, length=7)
+    # set all timings except first one as null
     df2['arrival_time'] = None
     df2.at[0,'arrival_time'] = start_time
 
-    # to do: populate remaining arrival times also, taking a default speed
+    # TO DO: if requested, populate remaining arrival times also, taking a default speed
     # and calculating lat-long distance / routed distance
 
     status1 = dbconnect.execSQL(i1)

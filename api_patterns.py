@@ -48,6 +48,7 @@ class updatePatternsOrder_payload(BaseModel):
 @app.post("/API/updatePatternsOrder", tags=["patterns"])
 def updatePatternsOrder(req: updatePatternsOrder_payload):
     cf.logmessage("updatePatternsOrder api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
     returnD = { 'message': "success"}
 
     # 2 sets of updates to avoid breaking the route + sequence constraint.

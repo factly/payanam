@@ -177,10 +177,26 @@ function saveTimings() {
 
     $('#saveTimings_status').html(`Saving to DB..`);
     let table = Tabulator.findTable("#tabulator_stoptimes")[0];
-    let data = table.getData();
-    console.log("saveTimings:",data);
+
+    let edits = [];
+    table.getEditedCells().forEach(cell => {
+        let stop_sequence = cell.getRow().getData().stop_sequence;
+        let trip_id = cell.getColumn().getField();
+        let arrival_time = cell.getValue();
+        console.log(trip_id,stop_sequence,arrival_time);
+        edits.push({'trip_id':trip_id, 'stop_sequence':stop_sequence,'arrival_time':arrival_time});
+    })
+
+    if(edits.length == 0) {
+        alert(`No timings changes done yet, nothing to save.`);
+        return;
+    }
+    let pattern_id = $('#pattern_chosen').val();
+    // let data = table.getData();
+    console.log("saveTimings:",edits);
     let payload = {
-        "data": data
+        "pattern_id": pattern_id,
+        "edits": edits
     };
     $.ajax({
         url: `/API/saveTimings`,
@@ -190,7 +206,7 @@ function saveTimings() {
         contentType: 'application/json',
         success: function (returndata) {
             console.log(returndata);
-            $('#saveTimings_status').html(`Timings saved`);
+            $('#saveTimings_status').html(`${returndata.timings_updated} timing changes saved`);
             globalTimingsChanged = false;
         },
         error: function (jqXHR, exception) {
