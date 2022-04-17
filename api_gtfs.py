@@ -83,19 +83,82 @@ def uploadGTFS(
 #############################
 # Background task of creating GTFS
 
-def updateStatus(token, updates):
-    taskFile = os.path.join(outputFolder,'task_status.json')
-    if os.path.isfile(taskFile):
-        taskD = json.load(open(taskFile,'r'))
-    else: taskD = {}
-    if not taskD.get('createGTFS',False):
-        taskD['createGTFS'] = {}
 
-    if not taskD['createGTFS'].get(token,False):
-        taskD['createGTFS'][token] = {}
 
-    taskD['createGTFS'][token].update(updates)
-    json.dump(taskD, open(taskFile,'w'),indent=2)
+class createGTFS_payload(BaseModel):
+    depotsList: List[str] = []
+
+@app.post("/API/createGTFS", tags=["gtfs"])
+def createGTFS_api(req: createGTFS_payload, background_tasks: BackgroundTasks):
+    cf.logmessage("createGTFS api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
+    depotsList = req.depotsList
+
+    # check if already a GTFS op running; keep a timeout mins limit
+    clearance, age = checkTasks(taskName='createGTFS', limit=10)
+    
+    if not clearance:
+        return {"message": "not starting", "started": False, "age":age }
+
+    token = cf.makeUID(4) # creating a token to uniquely tag this GTFS creation process
+    background_tasks.add_task(createGTFS, token, req.depotsList, space_id)
+
+    returnD = { "message": "started in background", "started": True , "token": token }
+    if age: returnD["time_since_last"] = age
+    return returnD
+
+
+@app.get("/API/createGTFS_status", tags=["gtfs"])
+def createGTFS_status():
+    returnD = {"message":"success", "tasks": []}
+
+    s1 = f"""select details from tasks where name='createGTFS' order by last_updated desc
+    """
+    tasksList = dbconnect.makeQuery(s1, output='column')
+    returnD['tasks'] =tasksList
+    return returnD
+
+
+######################3
+# Functions
+
+def checkTasks(taskName='createGTFS', limit=10):
+    s1 = f"""select age from (
+    select EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_updated)) AS age from tasks 
+    where running='true'
+    and name = '{taskName}'
+    order by last_updated desc
+    ) as t1 where age <= {limit * 60}
+    """
+    runningTaskAges = dbconnect.makeQuery(s1, output='column')
+    if not len(runningTaskAges): return True,0
+
+    # if there is at least one recent running task, then give its age
+    return False, runningTaskAges[0]
+
+
+def updateStatus(token, updates, space_id):
+    s1 = f"select details from tasks where id = '{token}'"
+    detailsD = dbconnect.makeQuery(s1, output='oneValue')
+
+
+    if not detailsD:
+        # new task
+        i1 = f"""insert into tasks (id, space_id, name, last_updated, running, details) values (
+        '{token}',{space_id},'createGTFS',CURRENT_TIMESTAMP, 'true', '{json.dumps(updates)}' )
+        """
+        i1Count = dbconnect.execSQL(i1)
+
+    else:
+        detailsD.update(updates)
+        uVals = ["last_updated = CURRENT_TIMESTAMP", f"details = '{json.dumps(detailsD)}'"]
+        if not updates.get('running',True): uVals.append(f"running = 'false'")
+
+        u1 = f"""update tasks
+        set {','.join(uVals)}
+        where id = '{token}'
+        """
+        u1Count = dbconnect.execSQL(u1)
     return
 
 
@@ -109,8 +172,8 @@ def createGTFS(token, depotsList, space_id):
 
     cf.logmessage(f"Background task: createGTFS token: {token}, outputFolder: {gtfsFolder}")
     ts = cf.getTime()
-    updates = {'running':True, 'started_at':ts, 'last_updated': ts}
-    updateStatus(token, updates) # call this function whenever some step is done.
+    updates = {'token':token, 'running':True, 'depots': depotsList, 'started_at':ts}
+    updateStatus(token, updates, space_id) # call this function whenever some step is done.
     
     # fetch configs
     s1 = f"select config_key, config_value from config where space_id={space_id}"
@@ -131,8 +194,28 @@ def createGTFS(token, depotsList, space_id):
     agencydf.to_csv(os.path.join(gtfsFolder,'agency.txt'),index=False)
 
     ts = cf.getTime()
-    updates = {'last_updated': ts, 'agency.txt':ts}
-    updateStatus(token, updates)
+    updates = {'agency.txt':ts}
+    updateStatus(token, updates, space_id)
+
+    # calendar.txt
+    # take the one in configD settings only for now.
+    crow = { "service_id": configD.get('calendar_default_service_id','ALL'),
+        "start_date": configD.get("calendar_default_start_date","20220101"),
+        "end_date": configD.get("calendar_default_end_date","20270101")
+    }
+    days = configD.get("calendar_default_days","MTWTFSS")
+    crow['monday'] = 1    if days[0].upper() == 'M' else 0
+    crow['tuesday'] = 1   if days[1].upper() == 'T' else 0
+    crow['wednesday'] = 1 if days[2].upper() == 'W' else 0
+    crow['thursday'] = 1  if days[3].upper() == 'T' else 0
+    crow['friday'] = 1    if days[4].upper() == 'F' else 0
+    crow['saturday'] = 1  if days[5].upper() == 'S' else 0
+    crow['sunday'] = 1    if days[6].upper() == 'S' else 0
+    calenderdf = pd.DataFrame([crow])
+    calenderdf.to_csv(os.path.join(gtfsFolder, 'calendar.txt'), index=False)
+    ts = cf.getTime()
+    updates = {'calendar.txt':ts}
+    updateStatus(token, updates, space_id)
 
     # routes
     if len(depotsList):
@@ -146,6 +229,12 @@ def createGTFS(token, depotsList, space_id):
     routes1df['route_type'] = configD.get('gtfs_route_type','3')
     routes1df['agency_id'] = configD.get('agency_id', 'TSRTC')
     routes1df['depot'].replace(to_replace={'':'MISC'}, inplace=True)
+
+    # provisionally save routes.txt
+    routes1df.to_csv(os.path.join(gtfsFolder, 'routes.txt'), index=False)
+    ts = cf.getTime()
+    updates = {'routes.txt':ts, 'num_routes':len(routes1df)}
+    updateStatus(token, updates, space_id)
 
     # trips, thru patterns
     routeIdsSQL = cf.quoteNcomma(routes1df['route_id'].tolist())
@@ -173,6 +262,9 @@ def createGTFS(token, depotsList, space_id):
     order by pattern_id, stop_sequence
     """
     patternsdf1 = dbconnect.makeQuery(s1, output='df')
+    ts = cf.getTime()
+    updates = {'patterns':ts, 'num_patterns':len(patternsdf1)}
+    updateStatus(token, updates, space_id)
 
     # get all stops used in the patterns
     allStops = patternsdf1['stop_id'].unique().tolist()
@@ -189,12 +281,16 @@ def createGTFS(token, depotsList, space_id):
     default_lon = float(default_loc[1])
     stopsdf1['latitude'].replace(to_replace={'':defaut_lat}, inplace=True)
     stopsdf1['longitude'].replace(to_replace={'':default_lon}, inplace=True)
+    stopsdf1.rename(columns={'latitude':'stop_lat','longitude':'stop_lon'}, inplace=True)
 
     # save stops.txt
     stopsdf1.to_csv(os.path.join(gtfsFolder, 'stops.txt'), index=False)
     ts = cf.getTime()
-    updates = {'last_updated': ts, 'stops.txt':ts}
-    updateStatus(token, updates)
+    updates = {'stops.txt':ts, 'num_stops':len(stopsdf1), 'unmapped_stops':unmapped}
+    updateStatus(token, updates, space_id)
+    message = f"{len(stopsdf1)} stops"
+    if unmapped: message += f", {unmapped} of them unmapped (and assumed a default lat-long"
+    cf.logmessage(message)
 
 
     # get all timings
@@ -205,12 +301,26 @@ def createGTFS(token, depotsList, space_id):
     """
     timingsdf1 = dbconnect.makeQuery(s1, output='df')
 
+    # populate departure_time wherever blank with same value as arrival_time
+    def departurePopulate(x):
+        if not x['departure_time']:
+            if x['arrival_time']:
+                return x['arrival_time']
+            else:
+                return ''
+        else:
+            return x['departure_time']
+
+    timingsdf1['departure_time'] = timingsdf1.apply(lambda x: departurePopulate(x) , axis=1)
+
     # merge stops into patternsdf1
     patternsdf2 = pd.merge(patternsdf1,stopsdf1, how='left',on='stop_id')
 
     # loop thru each trip, combine pattern and timings table
     stopTimesArr = []
     tripsdf1['include'] = 1
+    makeTripCount = 0
+    cf.logmessage(f"Processing {len(tripsdf1)} trips for trips and stop_times")
     for N,tr in tripsdf1.iterrows():
         makeTrip = False
         patternsdf3 = patternsdf2[patternsdf2['pattern_id'] == tr['pattern_id']].copy().reset_index(drop=True)
@@ -252,6 +362,7 @@ def createGTFS(token, depotsList, space_id):
                 timingCollector.append(timerow)
             timingsdf2 = pd.DataFrame(timingCollector)
             timingsdf2['trip_id'] = trip_id
+            makeTripCount += 1
         
         if len(patternsdf3) != len(timingsdf2): 
             cf.logmessage(f"Warning: inconsistent lengths for pattern {tr['pattern_id']} {len(tr['pattern_id'])}, trip {tr['trip_id']} {len(tr['trip_id'])}")
@@ -260,80 +371,41 @@ def createGTFS(token, depotsList, space_id):
         st1df = pd.merge(patternsdf3, timingsdf2, how='left', on='stop_sequence')
         stopTimesArr.append(st1df)
         
-        if (N+1)%100 == 0: cf.logmessage(f"Processed {N+1} trips")
+        if (N+1)%100 == 0: 
+            updates = { 'trips_processed': N+1 }
+            updateStatus(token, updates, space_id)
+            cf.logmessage(f"Processed {N+1} trips")
 
     # excluded trips
     excludedTrips = len(tripsdf1[tripsdf1['include']==0])
-    if excludedTrips > 0:
-        ts = cf.getTime()
-        updates = {'last_updated': ts, 'excludedTrips':excludedTrips}
-        updateStatus(token, updates)
-
+    
     # make final trips.txt
     tripCols = ['route_id','service_id','trip_id','direction_id','block_id']
-    tripsdf1[tripsdf1['include']==1][tripCols].to_csv(os.path.join(gtfsFolder, 'trips.txt'), index=False)
+    tripsdf2 = tripsdf1[tripsdf1['include']==1]
+    tripsdf2[tripCols].to_csv(os.path.join(gtfsFolder, 'trips.txt'), index=False)
     ts = cf.getTime()
-    updates = {'last_updated': ts, 'trips.txt':ts}
-    updateStatus(token, updates)
+    updates = {'trips.txt':ts, 'num_trips':len(tripsdf2), 'excludedTrips':excludedTrips, 'createdTrips':makeTripCount}
+    updateStatus(token, updates, space_id)
 
+    # stop_times
     st2df = pd.concat(stopTimesArr, sort=False, ignore_index=True )
+
+    # make arrival and departure times as proper hh:mm:ss
+    st2df['arrival_time'] = st2df['arrival_time'].apply(cf.timeFormat)
+    st2df['departure_time'] = st2df['departure_time'].apply(cf.timeFormat)
+
     stopTimesCols = ['trip_id','arrival_time','departure_time','stop_id','stop_sequence']
     st2df[stopTimesCols].to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
     ts = cf.getTime()
-    updates = {'last_updated': ts, 'stop_times.txt':ts}
-    updateStatus(token, updates)
+    updates = {'stop_times.txt':ts, 'num_stop_times':len(st2df) }
+    updateStatus(token, updates, space_id)
 
-    # to do: calendar.txt
-
+    
+    # done; close it
+    timeTaken = round(time.time()-tstart,2)
     ts = cf.getTime()
-    updates = {'last_updated': ts, 'running':False}
-    updateStatus(token, updates)
+    updates = {'running':False, 'completed':True, 'timeTaken':timeTaken}
+    updateStatus(token, updates, space_id)
 
-    cf.logmessage(f"Background task of token {token} complete in {round(time.time()-tstart,2)}secs. GTFS in {gtfsFolder}")
-    
+    cf.logmessage(f"Background task of token {token} complete in {timeTaken}secs. GTFS in {gtfsFolder}")
 
-class createGTFS_payload(BaseModel):
-    depotsList: List[str] = []
-
-@app.post("/API/createGTFS", tags=["gtfs"])
-def createGTFS_api(req: createGTFS_payload, background_tasks: BackgroundTasks):
-    cf.logmessage("createGTFS api call")
-    space_id = int(os.environ.get('SPACE_ID',1))
-    depotsList = req.depotsList
-
-    # check if already a GTFS op running; keep a timeout mins limit
-    clearance, age = checkTasks(taskName='createGTFS', limit=10)
-    
-    if not clearance:
-        return {"message": "not starting", "started": False, "age":age }
-
-    token = cf.makeUID(3) # creating a token to uniquely tag this GTFS creation process
-    background_tasks.add_task(createGTFS, token, req.depotsList, space_id)
-
-    returnD = { "message": "started in background", "started": True , "token": token }
-    if age: returnD["time_since_last"] = age
-    return returnD
-
-
-def checkTasks(taskName='createGTFS', limit=10):
-    taskFile = os.path.join(outputFolder,'task_status.json')
-    createGTFSarr = json.load(open(taskFile,'r')).get(taskName,{})
-    if not len(list(createGTFSarr.keys())): return True,0
-
-    queuedf1 = pd.DataFrame(createGTFSarr).transpose()[['running','last_updated']].rename_axis('token').reset_index(drop=False)
-    if not len(queuedf1): return True,0
-    
-    queuedf2 = queuedf1[queuedf1['running']].copy().sort_values('last_updated',ascending=False).reset_index(drop=True)
-    if not len(queuedf2): return True,0
-    
-    # so there is at least one still-running task. But it could be v.old and have errored out.
-    # To handle that edge case:
-    t1 = datetime.datetime.strptime(queuedf2['last_updated'].values[0], '%Y-%m-%d %H:%M:%S')
-    timeOffset = 5.5
-    age = cf.getTime(returnObj=True) - t1
-    if age.total_seconds() < limit*60:
-        cf.logmessage(f"{taskName}: still one task running and under {limit} mins since; not ok to run")
-        return False, age.total_seconds()
-    else:
-        cf.logmessage(f"{taskName}: latest task running is over {limit} mins old, so assuming its crashed; ok to run")
-        return True, age.total_seconds()

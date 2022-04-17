@@ -1,6 +1,8 @@
 #commonfuncs.py
 import json, os, time, datetime, secrets # uuid
 import pandas as pd
+from math import sin, cos, sqrt, atan2, radians
+
 
 root = os.path.dirname(__file__)
 print(root)
@@ -105,3 +107,68 @@ def assignUID(df, col='id', length=4):
 # quick lambda function to zap a string
 zapper = lambda x: ''.join(e.lower() for e in str(x) if e.isalnum())
 
+
+# make proper gtfs time string
+def timeFormat(x):
+    # getting rid of artefacts: from question itself in https://stackoverflow.com/questions/947776/strip-all-non-numeric-characters-except-for-from-a-string-in-python
+    x = ''.join([c for c in x if c in '1234567890:'])
+    
+    holder1 = x.split(':')
+    if len(holder1) < 2:
+        # if it's like '1320' then interpret it
+        justnum = holder1[0]
+        if justnum == '':
+            # blank string
+            return ''
+        if len(justnum) in [3,4]:
+            holder1 = [ justnum[:-2], justnum[-2:] ]
+            logmessage("Special case: {} becomes {}".format(justnum,holder1))
+        else:
+            logmessage('{} is an invalid time string. Skipping it.'.format(x))
+            # raise ValueError("'{}' is an invalid time string.".format(x))
+            return ''
+    hh = holder1[0].rjust(2,'0')
+    mm = holder1[1].rjust(2,'0')
+    if len(holder1) >= 3: ss = holder1[2].rjust(2,'0')
+    else: ss = '00'
+    return "{}:{}:{}".format(hh,mm,ss)
+
+
+# imported from static gtfs manager
+def lat_long_dist(lat1,lon1,lat2,lon2):
+    # function for calculating ground distance between two lat-long locations
+    R = 6373.0 # approximate radius of earth in km. 
+
+    lat1 = radians( float(lat1) )
+    lon1 = radians( float(lon1) )
+    lat2 = radians( float(lat2) )
+    lon2 = radians( float(lon2) )
+
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    distance = round(R * c, 2)
+    return distance
+
+def computeDistance(sequencedf):
+    prevLat = prevLon = 0 # dummy initiation
+    total_dist = 0
+    for N in range(len(sequencedf)):
+        lat = float(sequencedf.at[N,'stop_lat'])
+        lon = float(sequencedf.at[N,'stop_lon'])
+        
+        if N == 0:
+            sequencedf.at[N,'ll_dist'] = 0
+        else:
+            sequencedf.at[N,'ll_dist'] = lat_long_dist(lat,lon, prevLat,prevLon)
+        
+        total_dist += sequencedf.at[N,'ll_dist']
+        sequencedf.at[N,'ll_dist_traveled'] = round(total_dist,2)
+        prevLat = lat
+        prevLon = lon
+        
+    return round(total_dist,2)
+    # even the original sequencedf passed is changed with the ll_dist and ll_dist_traveled columns added, unless a copy was passed in.

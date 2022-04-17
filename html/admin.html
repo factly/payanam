@@ -155,15 +155,15 @@ body {
       <div class="tab-pane fade" id="v-pills-4" role="tabpanel" aria-labelledby="v-pills-4-tab">
         <h3>GTFS Export</h3>
         <div class="row">
-          <div class="col-md-6">
+          <div class="col-md-4">
             <p>Filter down to one or more depots: <select multiple id="gtfs_export_depot_select">
               <option value="">All depots</option>
             </select></p>
-            <p><button class="btn btn-block btn-success" onclick="createGTFS()">Create and Download GTFS</button> <span id="createGTFS_status"></span></p>
+            <p><button class="btn btn-block btn-success" onclick="createGTFS()">Initiate GTFS Creation</button> <span id="createGTFS_status"></span></p>
             <p class="alert alert-warning"><small>Note: For unmapped stops, default lat-long as given in GTFS settings will be assumed</small></p>
           </div>
-          <div class="col-md-6">
-            <p><b>Previous exports</b></p>
+          <div class="col-md-8">
+            <p><b>GTFS Creation Tasks</b></p>
             <ul id="exportsList"></ul>
           </div>
         </div>
