@@ -13,12 +13,10 @@
 <link rel="stylesheet" href="lib/leaflet.contextmenu.min.css">
 <link rel="stylesheet" href="lib/leaflet-search.css">
 <link href="lib/flatpickr.min.css" rel="stylesheet">
-<link rel="stylesheet" href="lib/selectize.bootstrap4.min.css" />
+<link href="lib/selectize.bootstrap4.min.css" rel="stylesheet" />
 
 <link href="js/style.css" rel="stylesheet">
 
-<!-- <link rel="stylesheet" href="lib/chosen/chosen.min.css"> -->
-<!-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> -->
 
 <!-- Put the CSSs first and JSs next -->
 
@@ -39,14 +37,8 @@
 <script src="lib/leaflet-search.min.js"></script>
 <script src="lib/ace.js" type="text/javascript" charset="utf-8"></script>
 <script src="lib/flatpickr.js"></script>
-
 <script src="lib/Sortable.min.js"></script>
 <script src="lib/selectize.min.js"></script>
-
-<!-- <script src="lib/chosen/chosen.jquery.min.js" type="text/javascript"></script> -->
-<!-- Select2 - https://select2.org/getting-started/installation -->
-<!-- <script src="lib/select2.min.js"></script> -->
-<!-- jsDelivr :: Sortable :: Latest (https://www.jsdelivr.com/package/npm/sortablejs) -->
 
 <style>
 /*body {
@@ -57,55 +49,6 @@ height: 85vh;
 width: 100%;
 }
 
-/* sortableJS https://sortablejs.github.io/Sortable/#simple-list */
-.sortable-ghost {
-    background-color: #C8EBFB;
-}
-
-.list-group-item {
-    position: relative;
-    height: 40px;
-}
-
-.removeStopButton {
-    position: absolute;
-    background: #ff6666;
-    color: white;
-    top: 5px;
-    right: -5px;
-    font-weight: bold;
-    font-size: 0.8em;
-    height: 20px;
-    vertical-align: text-top;
-    width: 20px;
-    text-align: center;
-    cursor:pointer;
-}
-
-/*.timeOffsetHolder {
-    position: relative;
-    float: right;
-}*/
-
-.stop-divicon {
-    border-radius: 100%;
-    color: white;
-    padding-top: 1px;
-    /*padding-bottom: 20px;*/
-    padding-left: 0px;
-    position: absolute;
-    text-align: center;
-    overflow: hidden;
-    /*box-shadow:0px 0px 10px black; /*looks 3D! no need of a border*/
-    background-color: green;
-    border: 2px solid white;
-    font-size: 8pt;
-}
-
-#stops_order_holder {
-    height: 75vh;
-    overflow-y: scroll;
-}
 
 .routeBand {
     padding-top: 20px;
@@ -121,11 +64,6 @@ width: 100%;
     padding-top: 20px;
     background: #0a5575; /*light pink*/
     color: whitesmoke;
-}
-
-#patterns_order_holder {
-    max-height: 400px;
-    overflow-y: scroll;
 }
 
 
@@ -159,22 +97,6 @@ width: 100%;
     font-size: 1.2em;
 }
 
-/* ACE Editor - numbered lines */
-.stopsList {
-    height: 40vh;
-    font-size: 1.2em;
-    font-weight: 400;
-    width: 95%;
-}
-.ace_gutter-cell {
-    color: rgb(155, 155, 155);
-}
-
-/* selectize */
-.selectize-dropdown .optgroup-header {
-    font-weight: bold;
-    background-color: #e6f2ff!important; /*light blue*/
-}
 
 
 </style>
@@ -194,12 +116,18 @@ width: 100%;
                 <select id="routes_list"></select>
             </div>
         </div>
-        <p>Route name: <input id="route_name" placeholder="route name">
-            &nbsp;&nbsp;&nbsp;&nbsp;<small>..or fill these to create a new route</small></p>
-        <p>Description: <input id="route_description"></p>
-        <p>Depot: <input id="route_depot">
-        &nbsp;&nbsp;&nbsp;&nbsp;
-        <button onclick="routeAction()" id="routeActionButton" class="btn btn-sm btn-primary">Create Route</button></p>
+
+        <a href="#routeHolder" class="badge badge-success" data-toggle="collapse">Route Details</a>
+        <div id="routeHolder" class="collapse">
+            <div class="row"><div class="col-md-3 rightside">Route name</div><div class="col-md-9"><input class="form-control" id="route_name"></div></div>
+            <div class="row"><div class="col-md-3 rightside">Description</div><div class="col-md-9"><input class="form-control" id="route_description"></div></div>
+            <div class="row"><div class="col-md-3 rightside">Depot</div><div class="col-md-9">
+                <select id="route_depot">
+                    <option value=""></option>
+                </select>
+            </div></div>
+            <button onclick="routeAction()" id="routeActionButton" class="btn btn-sm btn-primary">Create Route</button>
+        </div>
         <p><span id="route_status"></span></p>
     </div>
     <div class="col-md-3">

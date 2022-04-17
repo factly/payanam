@@ -172,7 +172,7 @@ $(document).ready(function () {
     });
 
     $('#depot_select').change(function () {
-        if (! $(this).val()) return;
+        // if (! $(this).val()) return;
         filterRoutesByDepot($(this).val());
     })
     // //ACE editor : listen for changes
@@ -186,7 +186,7 @@ $(document).ready(function () {
 // ############################################
 // ROUTES
 
-function loadRoutesList(route_id) {
+function loadRoutesList() {
     $('#route_status').html(`Loading routes...`);
     let payload = {};
     $.ajax({
@@ -203,6 +203,18 @@ function loadRoutesList(route_id) {
                 depotContent += `<option value="${d}">${d}</option>`;
             });
             $('#depot_select').html(depotContent);
+            $("#depot_select").selectize({
+                closeAfterSelect: true,
+                plugins: ['remove_button']
+            });
+
+            // route_depot in route details
+            // if($("#route_depot")[0].selectize) $("#route_depot")[0].selectize.destroy();
+            $('#route_depot').html(depotContent);
+            $("#route_depot").selectize({
+                create: true,
+                closeAfterSelect: true
+            });
 
             // format like https://stackoverflow.com/a/60733010/4355695
             // let selectizeOptions = [];
@@ -254,13 +266,12 @@ function loadRoutesList(route_id) {
                 }
             });
                 
-            $('#route_status').html(`All routes loaded.`);
-
             // load a route from URLParams
             if(URLParams['route']) {
-                var selectize = routeSelectize[0].selectize;
-                selectize.setValue(URLParams['route'],silent=false)
+                // var selectize = routeSelectize[0].selectize;
+                $("#routes_list")[0].selectize.setValue(URLParams['route'],silent=false)
             }
+            $('#route_status').html(`All routes loaded.`);
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -270,7 +281,8 @@ function loadRoutesList(route_id) {
 }
 
 function filterRoutesByDepot(depot) {
-    let newList = globalRoutesList.filter(r => {return r.depot === depot}); 
+    let newList = globalRoutesList;
+    if(depot) newList = globalRoutesList.filter(r => {return r.depot === depot}); 
     console.log(`filterRoutesByDepot: after filtering by depot=${depot}, routes: ${newList.length}`);
     
     // clear selected, from https://stackoverflow.com/a/55047781/4355695
@@ -316,15 +328,17 @@ function routeAction() {
         contentType: 'application/json',
         success: function (returndata) {
             console.log(returndata);
-            // loadRoutesList(returndata['id']);
-
+            
             if(!route_id) {
-                // add the route to routesList and trigger selecting it - avoid having to make another api call
-                // https://select2.org/programmatic-control/add-select-clear-items#create-if-not-exists
-                var newOption = new Option(payload['name'], returndata.id, true, true);
-                $('#routes_list').append(newOption).trigger('change');
-
                 $('#route_status').html(`Created new route, id: ${returndata['id']}`);
+                
+                const myTimeout = setTimeout(function(){
+                    // change URL to have permalink to this route
+                    let plink = `?route=${returndata['id']}#${map.getZoom()}/${map.getCenter().lat.toFixed(4)}/${map.getCenter().lng.toFixed(4)}`;
+                    history.pushState({page: 1}, null, plink);
+                    history.go();
+                }, 1000);
+                
             } else {
                 $('#route_status').html(`Updated route info.`);
             }
@@ -354,7 +368,8 @@ function loadRouteDetails(route_id, pattern_id=null) {
             globalRoute = returndata;
             $('#route_name').val(returndata.route.name);
             $('#route_description').val(returndata.route.description);
-            $('#route_depot').val(returndata.route.depot);
+            // $('#route_depot').val(returndata.route.depot);
+            $("#route_depot")[0].selectize.setValue(returndata.route.depot,silent=true)
             $('#routeActionButton').html(`Update route info`);
 
             // load patterns

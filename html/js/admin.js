@@ -64,7 +64,39 @@ function loadConfigSettings() {
     });
     $('#gtfs_export_depot_select').html(content);
 
+    $('#gtfs_export_depot_select').selectize({
+        placeholder: "All depots",
+        plugins: ['remove_button'] // spotted here: https://stackoverflow.com/q/51611957/4355695
+    });
 
+    // GTFS defaults
+    if(globalConfig['gtfs_default_loc']) {
+        $('#gtfs_default_loc').val(globalConfig['gtfs_default_loc']);
+    }
+    if(globalConfig['gtfs_route_type']) {
+        $('#gtfs_route_type').val(globalConfig['gtfs_route_type']);
+    }
+    if(globalConfig['gtfs_default_tripPerPattern']) {
+        $('#gtfs_default_tripPerPattern').val(globalConfig['gtfs_default_tripPerPattern']);
+    }
+    if(globalConfig['gtfs_default_tripstart']) {
+        $('#gtfs_default_tripstart').val(globalConfig['gtfs_default_tripstart']);
+    }
+    if(globalConfig['gtfs_default_calcTimings']) {
+        $('#gtfs_default_calcTimings').val(globalConfig['gtfs_default_calcTimings']);
+    }
+    if(globalConfig['gtfs_default_speed']) {
+        $('#gtfs_default_speed').val(globalConfig['gtfs_default_speed']);
+    }
+
+    
+
+
+
+    // selectize
+    $('#gtfs_route_type').selectize({
+        placeholder: "Choose route type"
+    });
 }
 
 function saveFuzzySettings() {
@@ -107,6 +139,12 @@ function gtfs_settings_update() {
     payload.data.push({ "key": "calendar_default_start_date", "value": $('#calendar_default_start_date').val() });
     payload.data.push({ "key": "calendar_default_end_date", "value": $('#calendar_default_end_date').val() });
     payload.data.push({ "key": "calendar_default_days", "value": $('#calendar_default_days').val() });
+    payload.data.push({ "key": "gtfs_route_type", "value": $('#gtfs_route_type').val() });
+    payload.data.push({ "key": "gtfs_default_loc", "value": $('#gtfs_default_loc').val() });
+    payload.data.push({ "key": "gtfs_default_tripPerPattern", "value": $('#gtfs_default_tripPerPattern').val() });
+    payload.data.push({ "key": "gtfs_default_tripstart", "value": $('#gtfs_default_tripstart').val() });
+    payload.data.push({ "key": "gtfs_default_calcTimings", "value": $('#gtfs_default_calcTimings').val() });
+    payload.data.push({ "key": "gtfs_default_speed", "value": $('#gtfs_default_speed').val() });
 
     $('#gtfs_settings_update_status').html(`Saving GTFS settings..`);
 
@@ -128,11 +166,9 @@ function gtfs_settings_update() {
 }
 
 function createGTFS() {
-    let depot = $('#gtfs_export_depot_select').val();
-    let payload = {};
-    if(depot) {
-        payload['depot'] = depot;
-    }
+    let depotsList = $('#gtfs_export_depot_select').val();
+    let payload = {'depotsList':depotsList};
+
     $('#createGTFS_status').html("Creating GTFS. Please wait, or come back some time later to find the latest export in the right side list.");
     $.ajax({
         url: `/API/createGTFS`,
