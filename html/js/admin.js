@@ -208,7 +208,7 @@ function fetchGTFSexports() {
                 if(t.completed) content += `<big><a class="badge badge-success" href="gtfs/gtfs_${t.token}/gtfs_${t.token}.zip">
                         <span class="oi oi-data-transfer-download"></span>
                         ${t.token}</a></big> <small>Completed: ${t.last_updated}</small><br>`;
-                else content += `<span class="badge badge-warning">${t.token}</span> Started: ${t.started_at}<br>`;
+                else content += `<span class="badge badge-warning">${t.token}</span> <small>Started: ${t.started_at}</small><br>`;
                 
                 if(t.depots.length) content += `Depots: ${t.depots.join(', ')}<br>`;
                 
