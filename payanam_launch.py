@@ -33,7 +33,11 @@ import api_gtfs
 import api_timings
 import api_matching
 
+app.mount("/gtfs", StaticFiles(directory="output", html = False), name="gtfs")
+# Note: "/gtfs" mount needs to be above the / mount, else latter overrides.
+
 app.mount("/", StaticFiles(directory="html", html = True), name="static")
 # https://fastapi.tiangolo.com/tutorial/static-files/
 # html=True is needed for defaulting to index.html. From https://stackoverflow.com/a/63805506/4355695
+
 

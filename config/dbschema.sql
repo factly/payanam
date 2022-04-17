@@ -155,3 +155,13 @@ CREATE TABLE config(
     modified_by VARCHAR(100) NULL
 );
 
+
+DROP TABLE IF EXISTS tasks;
+CREATE TABLE tasks(
+    space_id INT NULL,
+    id VARCHAR(10) NOT NULL PRIMARY KEY,
+    name VARCHAR(10) NULL,
+    last_updated TIMESTAMP(0) NULL,
+    running BOOLEAN NULL,
+    details JSONB default '{}' NOT NULL
+);

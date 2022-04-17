@@ -64,7 +64,39 @@ function loadConfigSettings() {
     });
     $('#gtfs_export_depot_select').html(content);
 
+    $('#gtfs_export_depot_select').selectize({
+        placeholder: "All depots",
+        plugins: ['remove_button'] // spotted here: https://stackoverflow.com/q/51611957/4355695
+    });
 
+    // GTFS defaults
+    if(globalConfig['gtfs_default_loc']) {
+        $('#gtfs_default_loc').val(globalConfig['gtfs_default_loc']);
+    }
+    if(globalConfig['gtfs_route_type']) {
+        $('#gtfs_route_type').val(globalConfig['gtfs_route_type']);
+    }
+    if(globalConfig['gtfs_default_tripPerPattern']) {
+        $('#gtfs_default_tripPerPattern').val(globalConfig['gtfs_default_tripPerPattern']);
+    }
+    if(globalConfig['gtfs_default_tripstart']) {
+        $('#gtfs_default_tripstart').val(globalConfig['gtfs_default_tripstart']);
+    }
+    if(globalConfig['gtfs_default_calcTimings']) {
+        $('#gtfs_default_calcTimings').val(globalConfig['gtfs_default_calcTimings']);
+    }
+    if(globalConfig['gtfs_default_speed']) {
+        $('#gtfs_default_speed').val(globalConfig['gtfs_default_speed']);
+    }
+
+    
+
+
+
+    // selectize
+    $('#gtfs_route_type').selectize({
+        placeholder: "Choose route type"
+    });
 }
 
 function saveFuzzySettings() {
@@ -107,6 +139,12 @@ function gtfs_settings_update() {
     payload.data.push({ "key": "calendar_default_start_date", "value": $('#calendar_default_start_date').val() });
     payload.data.push({ "key": "calendar_default_end_date", "value": $('#calendar_default_end_date').val() });
     payload.data.push({ "key": "calendar_default_days", "value": $('#calendar_default_days').val() });
+    payload.data.push({ "key": "gtfs_route_type", "value": $('#gtfs_route_type').val() });
+    payload.data.push({ "key": "gtfs_default_loc", "value": $('#gtfs_default_loc').val() });
+    payload.data.push({ "key": "gtfs_default_tripPerPattern", "value": $('#gtfs_default_tripPerPattern').val() });
+    payload.data.push({ "key": "gtfs_default_tripstart", "value": $('#gtfs_default_tripstart').val() });
+    payload.data.push({ "key": "gtfs_default_calcTimings", "value": $('#gtfs_default_calcTimings').val() });
+    payload.data.push({ "key": "gtfs_default_speed", "value": $('#gtfs_default_speed').val() });
 
     $('#gtfs_settings_update_status').html(`Saving GTFS settings..`);
 
@@ -128,12 +166,10 @@ function gtfs_settings_update() {
 }
 
 function createGTFS() {
-    let depot = $('#gtfs_export_depot_select').val();
-    let payload = {};
-    if(depot) {
-        payload['depot'] = depot;
-    }
-    $('#createGTFS_status').html("Creating GTFS. Please wait, or come back some time later to find the latest export in the right side list.");
+    let depotsList = $('#gtfs_export_depot_select').val();
+    let payload = {'depotsList':depotsList};
+
+    $('#createGTFS_status').html("Starting GTFS...");
     $.ajax({
         url: `/API/createGTFS`,
         type: "POST",
@@ -141,8 +177,11 @@ function createGTFS() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            $('#createGTFS_status').html(`GTFS settings saved.`);
-            
+            let content = ``;
+            if (returndata.started) content =`Started GTFS export, token: ${returndata.token}.`;
+            else content = `Not starting as there is an ongoing export since ${(returndata.age/60).toFixed(1)} mins.`
+
+            $('#createGTFS_status').html(content);             
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -153,5 +192,49 @@ function createGTFS() {
 }
 
 function fetchGTFSexports() {
+    $.ajax({
+        url: `/API/createGTFS_status`,
+        type: "GET",
+        //data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            let content = ``;
+            returndata.tasks.forEach(t => {
+                // <div class="card-body">
+                content += `<div class="alert alert-secondary">
+                `;
 
+                if(t.completed) content += `<big><a class="badge badge-success" href="gtfs/gtfs_${t.token}/gtfs_${t.token}.zip">
+                        <span class="oi oi-data-transfer-download"></span>
+                        ${t.token}</a></big> <small>Completed: ${t.last_updated}</small><br>`;
+                else content += `<span class="badge badge-warning">${t.token}</span> <small>Started: ${t.started_at}</small><br>`;
+                
+                if(t.depots.length) content += `Depots: ${t.depots.join(', ')}<br>`;
+                
+                let arr1 = [];
+                if (t.num_routes) arr1.push(`Routes: ${t.num_routes}`);
+                if (t.num_stops) arr1.push(`Stops: ${t.num_stops}`);
+                if (t.num_trips) arr1.push(`Trips: ${t.num_trips}`);
+                if (t.num_stop_times) arr1.push(`Timings: ${t.num_stop_times}`);
+                content += arr1.join(' | ') + '<br>';
+
+                // if assumed stuff
+                let arr2 = [];
+                if (t.createdTrips) arr2.push(`Default trips created: ${t.createdTrips}`);
+                if (t.excludedTrips) arr2.push(`Trips excluded: ${t.excludedTrips}`);
+                if (t.unmapped_stops) arr2.push(`Unmapped stops: ${t.unmapped_stops}`);
+                if ((! t.completed) && t.trips_processed) arr2.push(`Processed trips: ${t.trips_processed}`);
+                content += arr2.join(' | ') + '<br>';
+
+                content += `</div>`
+            });
+            $('#exportsList').html(content);
+            
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#exportsList').html(jqXHR.responseText);
+        }
+    });
 }

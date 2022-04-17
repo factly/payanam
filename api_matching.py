@@ -209,7 +209,7 @@ class unMappedData_payload(BaseModel):
 
 @app.post("/API/unMappedData", tags=["matching"])
 def unMappedData(req: unMappedData_payload):
-    cf.logmessage("suggestMatches api call")
+    cf.logmessage("unMappedData api call")
 
     space_id = int(os.environ.get('SPACE_ID',1))
     returnD = { "message": "success"}

@@ -60,10 +60,13 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
         ps_cursor = ps_connection.cursor()
         ps_cursor.execute(s1)
         row = ps_cursor.fetchone()
-        if output == 'oneValue':
-            result = row[0]
+        if not row: 
+            result = None
         else:
-            result = row
+            if output == 'oneValue':
+                result = row[0]
+            else:
+                result = row
         ps_cursor.close()
         
     elif output in ('df','list','oneJson','column'):
