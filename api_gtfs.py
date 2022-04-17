@@ -112,10 +112,15 @@ def createGTFS_api(req: createGTFS_payload, background_tasks: BackgroundTasks):
 def createGTFS_status():
     returnD = {"message":"success", "tasks": []}
 
-    s1 = f"""select details from tasks where name='createGTFS' order by last_updated desc
+    s1 = f"""select details, last_updated from tasks where name='createGTFS' order by last_updated desc
     """
-    tasksList = dbconnect.makeQuery(s1, output='column')
-    returnD['tasks'] =tasksList
+    tasksList = dbconnect.makeQuery(s1, output='list')
+    tcollector = []
+    for t in tasksList:
+        row = t['details'] # will be a dict
+        row['last_updated'] = cf.makeTimeString(t['last_updated'])
+        tcollector.append(row)
+    returnD['tasks'] =tcollector
     return returnD
 
 
@@ -400,7 +405,16 @@ def createGTFS(token, depotsList, space_id):
     updates = {'stop_times.txt':ts, 'num_stop_times':len(st2df) }
     updateStatus(token, updates, space_id)
 
-    
+    # create GTFS zip
+    zf = zipfile.ZipFile(os.path.join(gtfsFolder,f"gtfs_{token}.zip"), "w", zipfile.ZIP_DEFLATED)
+    zf.write(os.path.join(gtfsFolder, 'agency.txt'), arcname='agency.txt')
+    zf.write(os.path.join(gtfsFolder, 'calendar.txt'), arcname='calendar.txt')
+    zf.write(os.path.join(gtfsFolder, 'routes.txt'), arcname='routes.txt')
+    zf.write(os.path.join(gtfsFolder, 'stops.txt'), arcname='stops.txt')
+    zf.write(os.path.join(gtfsFolder, 'trips.txt'), arcname='trips.txt')
+    zf.write(os.path.join(gtfsFolder, 'stop_times.txt'), arcname='stop_times.txt')
+    zf.close()
+
     # done; close it
     timeTaken = round(time.time()-tstart,2)
     ts = cf.getTime()

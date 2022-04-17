@@ -169,7 +169,7 @@ function createGTFS() {
     let depotsList = $('#gtfs_export_depot_select').val();
     let payload = {'depotsList':depotsList};
 
-    $('#createGTFS_status').html("Creating GTFS. Please wait, or come back some time later to find the latest export in the right side list.");
+    $('#createGTFS_status').html("Starting GTFS...");
     $.ajax({
         url: `/API/createGTFS`,
         type: "POST",
@@ -177,8 +177,11 @@ function createGTFS() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            $('#createGTFS_status').html(`GTFS settings saved.`);
-            
+            let content = ``;
+            if (returndata.started) content =`Started GTFS export, token: ${returndata.token}.`;
+            else content = `Not starting as there is an ongoing export since ${(returndata.age/60).toFixed(1)} mins.`
+
+            $('#createGTFS_status').html(content);             
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -189,5 +192,49 @@ function createGTFS() {
 }
 
 function fetchGTFSexports() {
+    $.ajax({
+        url: `/API/createGTFS_status`,
+        type: "GET",
+        //data : JSON.stringify(payload),
+        cache: false,
+        contentType: 'application/json',
+        success: function (returndata) {
+            let content = ``;
+            returndata.tasks.forEach(t => {
+                // <div class="card-body">
+                content += `<div class="alert alert-secondary">
+                `;
 
+                if(t.completed) content += `<big><a class="badge badge-success" href="gtfs/gtfs_${t.token}/gtfs_${t.token}.zip">
+                        <span class="oi oi-data-transfer-download"></span>
+                        ${t.token}</a></big> <small>Completed: ${t.last_updated}</small><br>`;
+                else content += `<span class="badge badge-warning">${t.token}</span> Started: ${t.started_at}<br>`;
+                
+                if(t.depots.length) content += `Depots: ${t.depots.join(', ')}<br>`;
+                
+                let arr1 = [];
+                if (t.num_routes) arr1.push(`Routes: ${t.num_routes}`);
+                if (t.num_stops) arr1.push(`Stops: ${t.num_stops}`);
+                if (t.num_trips) arr1.push(`Trips: ${t.num_trips}`);
+                if (t.num_stop_times) arr1.push(`Timings: ${t.num_stop_times}`);
+                content += arr1.join(' | ') + '<br>';
+
+                // if assumed stuff
+                let arr2 = [];
+                if (t.createdTrips) arr2.push(`Default trips created: ${t.createdTrips}`);
+                if (t.excludedTrips) arr2.push(`Trips excluded: ${t.excludedTrips}`);
+                if (t.unmapped_stops) arr2.push(`Unmapped stops: ${t.unmapped_stops}`);
+                if ((! t.completed) && t.trips_processed) arr2.push(`Processed trips: ${t.trips_processed}`);
+                content += arr2.join(' | ') + '<br>';
+
+                content += `</div>`
+            });
+            $('#exportsList').html(content);
+            
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            $('#exportsList').html(jqXHR.responseText);
+        }
+    });
 }
