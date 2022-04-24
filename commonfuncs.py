@@ -1,11 +1,10 @@
 #commonfuncs.py
 import json, os, time, datetime, secrets # uuid
 import pandas as pd
-from math import sin, cos, sqrt, atan2, radians
-
+# from math import sin, cos, sqrt, atan2, radians
+import haversine
 
 root = os.path.dirname(__file__)
-print(root)
 timeOffset = 5.5
 maxThreads = 8
 
@@ -34,7 +33,7 @@ def makeTimeString(x, offset=5.5, format="all"):
     '''
     format values: all, time, date
     '''
-    # print(type(x))
+    # logmessage(type(x))
     if isinstance(x, pd._libs.tslibs.nattype.NaTType) : return ''
     
     if isinstance(x, (pd._libs.tslibs.timestamps.Timestamp,datetime.datetime, datetime.date) ):
@@ -134,24 +133,23 @@ def timeFormat(x):
     return "{}:{}:{}".format(hh,mm,ss)
 
 
-# imported from static gtfs manager
-def lat_long_dist(lat1,lon1,lat2,lon2):
-    # function for calculating ground distance between two lat-long locations
-    R = 6373.0 # approximate radius of earth in km. 
+# def lat_long_dist(lat1,lon1,lat2,lon2):
+#     # function for calculating ground distance between two lat-long locations
+#     R = 6373.0 # approximate radius of earth in km. 
 
-    lat1 = radians( float(lat1) )
-    lon1 = radians( float(lon1) )
-    lat2 = radians( float(lat2) )
-    lon2 = radians( float(lon2) )
+#     lat1 = radians( float(lat1) )
+#     lon1 = radians( float(lon1) )
+#     lat2 = radians( float(lat2) )
+#     lon2 = radians( float(lon2) )
 
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
+#     dlon = lon2 - lon1
+#     dlat = lat2 - lat1
 
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+#     a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+#     c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-    distance = round(R * c, 2)
-    return distance
+#     distance = round(R * c, 2)
+#     return distance
 
 def computeDistance(sequencedf):
     prevLat = prevLon = 0 # dummy initiation
@@ -163,7 +161,9 @@ def computeDistance(sequencedf):
         if N == 0:
             sequencedf.at[N,'ll_dist'] = 0
         else:
-            sequencedf.at[N,'ll_dist'] = lat_long_dist(lat,lon, prevLat,prevLon)
+            #sequencedf.at[N,'ll_dist'] = lat_long_dist(lat,lon, prevLat,prevLon)
+            sequencedf.at[N,'ll_dist'] = round(haversine.haversine((lat,lon),(prevLat,prevLon)),2)
+            # https://towardsdatascience.com/calculating-distance-between-two-geolocations-in-python-26ad3afe287b
         
         total_dist += sequencedf.at[N,'ll_dist']
         sequencedf.at[N,'ll_dist_traveled'] = round(total_dist,2)
@@ -172,3 +172,59 @@ def computeDistance(sequencedf):
         
     return round(total_dist,2)
     # even the original sequencedf passed is changed with the ll_dist and ll_dist_traveled columns added, unless a copy was passed in.
+
+
+def validateLL(lat, lon):
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except:
+        return False
+    
+    if not isinstance(lat, (int, float)): return False
+    if not isinstance(lon, (int, float)): return False
+
+    latLimits = (-90,90)
+    lonLimits = (-180,180)
+
+    if lat < latLimits[0] or lat > latLimits[1]: return False
+    if lon < lonLimits[0] or lon > lonLimits[1]: return False
+    return True
+
+
+# time calculations
+def time2secs(hhmmss):
+    hhmmss = hhmmss.replace("'","")
+    holder1 = hhmmss.split(':')
+    if len(holder1) < 2:
+        logmessage('{} is an invalid time string.'.format(hhmmss))
+        raise ValueError("'{}' is an invalid time string.".format(hhmmss))
+    hh = int(float(holder1[0]))
+    mm = int(float(holder1[1]))
+    if len(holder1) >= 3: ss = int(float(holder1[2])) # taking precautions for cases like '0.0' - first parse float, then int
+    else: ss = 0
+    return (hh*3600 + mm*60 + ss)
+
+def secs2time(secs):
+    # data cleaning: secs must be int
+    secs = int(float(secs))
+    hh = str(int(secs/3600)).rjust(2,'0')
+    remaining = secs % 3600
+    mm = str(int(remaining/60)).rjust(2,'0')
+    ss = str(remaining % 60).rjust(2,'0')
+    return "{}:{}:{}".format(hh,mm,ss)
+
+def timeDiff(t1,t2,formatted=True):
+    diff = time2secs(t2) - time2secs(t1)
+    if diff < 0:
+        logmessage("Yo time travel man: {} to {}".format(t1,t2))
+        diff = 0 - diff
+    # convert the diff back into hh:mm:ss format
+    if formatted:
+        return secs2time(diff)
+    else:
+        return diff
+
+def timeAdd(t1,delta):
+    return secs2time( time2secs(t1) + delta)
+

@@ -135,14 +135,14 @@ body {
             </div></div>
             <div class="row"><div class="col-md-6 rightside">Default trip start time</div><div class="col-md-6"><input class="form-control" id="gtfs_default_tripstart" placeholder="hh:mm"></div></div>
             
-            <div class="row"><div class="col-md-6 rightside">Calculate stop timings if not available <small>(using location and default speed)</small></div><div class="col-md-6">
-              <select id="gtfs_default_calcTimings" class="bigSelect">
+            <div class="row"><div class="col-md-6 rightside">Calculate stop timings if not available</div><div class="col-md-6">
+              <select id="gtfs_default_calcTimings" class="bigSelect narrow2">
                 <option value="Y">Yes</option>
                 <option value="N">No</option>
-              </select>
+              </select>  <small>(using location and default speed)</small>
             </div></div>
             
-            <div class="row"><div class="col-md-6 rightside">Default speed (km/h) <small>(for calculating timings)</small></div><div class="col-md-6"><input class="form-control" id="gtfs_default_speed"></div></div>
+            <div class="row"><div class="col-md-6 rightside">Default speed (km/h)</div><div class="col-md-3"><input class="form-control" id="gtfs_default_speed"></div><div class="col-md-3"><small>(for calculating timings)</small></div></div>
           </div>
           <div class="col-md-2">
             
@@ -172,7 +172,14 @@ body {
           </small></div>
           </div>
           <div class="col-md-8">
-            <h3>Exports</h3>
+            <div class="row">
+              <div class="col-md-6">
+                <h3>Exports</h3>
+              </div>
+              <div class="col-md-6" align="right">
+                <button class="btn btn-sm btn-outline-primary" onclick="fetchGTFSexports()">Reload</button>
+              </div>
+            </div>
             <div id="exportsList"></div>
           </div>
         </div>
