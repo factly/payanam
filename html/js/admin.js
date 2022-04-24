@@ -178,10 +178,18 @@ function createGTFS() {
         contentType: 'application/json',
         success: function (returndata) {
             let content = ``;
-            if (returndata.started) content =`Started GTFS export, token: ${returndata.token}.`;
+            if (returndata.started) {
+                content =`Started GTFS export, token: ${returndata.token}.`;
+                setTimeout(function () {
+                    fetchGTFSexports();
+                }, 4000);
+            }
             else content = `Not starting as there is an ongoing export since ${(returndata.age/60).toFixed(1)} mins.`
 
-            $('#createGTFS_status').html(content);             
+            $('#createGTFS_status').html(content);
+
+            
+
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -192,6 +200,7 @@ function createGTFS() {
 }
 
 function fetchGTFSexports() {
+    $('#exportsList').html(`Loading..`);
     $.ajax({
         url: `/API/createGTFS_status`,
         type: "GET",
@@ -205,10 +214,23 @@ function fetchGTFSexports() {
                 content += `<div class="alert alert-secondary">
                 `;
 
-                if(t.completed) content += `<big><a class="badge badge-success" href="gtfs/gtfs_${t.token}/gtfs_${t.token}.zip">
+                if(t.completed) {
+                    if (t.no_patterns) {
+                        content += `<span class="badge badge-secondary">${t.token}</span> <small>Started: ${t.started_at}</small><br>
+                        No patterns with stops found, so no data to make GTFS of.<br>`;
+                    }
+                    else if (t.no_timings) {
+                        content += `<span class="badge badge-secondary">${t.token}</span> <small>Started: ${t.started_at}</small><br>
+                        No timings for any route, and default trip creation is disabled (see settings), so no data to make GTFS of.<br>`;
+
+                    }
+                    else content += `<big><a class="badge badge-success" href="gtfs/gtfs_${t.token}/gtfs_${t.token}.zip">
                         <span class="oi oi-data-transfer-download"></span>
                         ${t.token}</a></big> <small>Completed: ${t.last_updated}</small><br>`;
-                else content += `<span class="badge badge-warning">${t.token}</span> <small>Started: ${t.started_at}</small><br>`;
+                    }
+                else {
+                    content += `<span class="badge badge-warning">${t.token}</span> <small>Started: ${t.started_at}</small><br>`;
+                }
                 
                 if(t.depots.length) content += `Depots: ${t.depots.join(', ')}<br>`;
                 
@@ -217,15 +239,18 @@ function fetchGTFSexports() {
                 if (t.num_stops) arr1.push(`Stops: ${t.num_stops}`);
                 if (t.num_trips) arr1.push(`Trips: ${t.num_trips}`);
                 if (t.num_stop_times) arr1.push(`Timings: ${t.num_stop_times}`);
-                content += arr1.join(' | ') + '<br>';
+                if(arr1.length)
+                    content += arr1.join(' | ') + '<br>';
 
                 // if assumed stuff
                 let arr2 = [];
                 if (t.createdTrips) arr2.push(`Default trips created: ${t.createdTrips}`);
                 if (t.excludedTrips) arr2.push(`Trips excluded: ${t.excludedTrips}`);
                 if (t.unmapped_stops) arr2.push(`Unmapped stops: ${t.unmapped_stops}`);
+                if (t.calculatedTimings) arr2.push(`Calculated timings: ${t.calculatedTimings}`);
                 if ((! t.completed) && t.trips_processed) arr2.push(`Processed trips: ${t.trips_processed}`);
-                content += arr2.join(' | ') + '<br>';
+                if(arr2.length)
+                    content += arr2.join(' | ') + '<br>';
 
                 content += `</div>`
             });

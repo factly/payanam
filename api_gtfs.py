@@ -27,8 +27,6 @@ os.makedirs(outputFolder, exist_ok=True)
 def uploadGTFS(
         file1: UploadFile = File(...),
         depot: Optional[str] = Form(None),
-        import_agency: Optional[bool] = Form(None)
-
         # depotsIncluded: Optional[bool] = Form(False)
     ):
     contents = file1.file.read()
@@ -72,7 +70,9 @@ def uploadGTFS(
 
     # TO DO: Validation
 
-    # 
+    # stops
+    if stopdf:
+        stopdf['zap'] = stopdf['stop_name'].apply(zapper)
 
     return {"filename": file1.filename, "name": groupName}
 
@@ -101,6 +101,9 @@ def createGTFS_api(req: createGTFS_payload, background_tasks: BackgroundTasks):
         return {"message": "not starting", "started": False, "age":age }
 
     token = cf.makeUID(4) # creating a token to uniquely tag this GTFS creation process
+    
+    # starting off background task and then finishing the api call without waiting for that task to complete
+    # from https://fastapi.tiangolo.com/tutorial/background-tasks/
     background_tasks.add_task(createGTFS, token, req.depotsList, space_id)
 
     returnD = { "message": "started in background", "started": True , "token": token }
@@ -110,6 +113,7 @@ def createGTFS_api(req: createGTFS_payload, background_tasks: BackgroundTasks):
 
 @app.get("/API/createGTFS_status", tags=["gtfs"])
 def createGTFS_status():
+    cf.logmessage("createGTFS_status api call")
     returnD = {"message":"success", "tasks": []}
 
     s1 = f"""select details, last_updated from tasks where name='createGTFS' order by last_updated desc
@@ -144,7 +148,7 @@ def checkTasks(taskName='createGTFS', limit=10):
 
 def updateStatus(token, updates, space_id):
     s1 = f"select details from tasks where id = '{token}'"
-    detailsD = dbconnect.makeQuery(s1, output='oneValue')
+    detailsD = dbconnect.makeQuery(s1, output='oneValue', noprint=True)
 
 
     if not detailsD:
@@ -152,7 +156,7 @@ def updateStatus(token, updates, space_id):
         i1 = f"""insert into tasks (id, space_id, name, last_updated, running, details) values (
         '{token}',{space_id},'createGTFS',CURRENT_TIMESTAMP, 'true', '{json.dumps(updates)}' )
         """
-        i1Count = dbconnect.execSQL(i1)
+        i1Count = dbconnect.execSQL(i1, noprint=True)
 
     else:
         detailsD.update(updates)
@@ -163,7 +167,7 @@ def updateStatus(token, updates, space_id):
         set {','.join(uVals)}
         where id = '{token}'
         """
-        u1Count = dbconnect.execSQL(u1)
+        u1Count = dbconnect.execSQL(u1, noprint=True)
     return
 
 
@@ -231,6 +235,7 @@ def createGTFS(token, depotsList, space_id):
     where space_id={space_id} {depotsSQL}
     order by depot, name"""
     routes1df = dbconnect.makeQuery(s1,output='df')
+    cf.logmessage(f"routes1df: {len(routes1df)} rows")
     routes1df['route_type'] = configD.get('gtfs_route_type','3')
     routes1df['agency_id'] = configD.get('agency_id', 'TSRTC')
     routes1df['depot'].replace(to_replace={'':'MISC'}, inplace=True)
@@ -251,6 +256,17 @@ def createGTFS(token, depotsList, space_id):
     where t2.route_id in ({routeIdsSQL})
     """
     tripsdf1 = dbconnect.makeQuery(s1, output='df')
+    cf.logmessage(f"tripsdf1: {len(tripsdf1)} rows")
+
+    # Handle where this is empty : meaning there are no patterns under these routes; quit
+    if not len(tripsdf1):
+        cf.logmessage(f"No pattern found under the {len(routes1df)} routes, can't make a GTFS")
+        ts = cf.getTime()
+        timeTaken = round(time.time()-tstart,2)
+        updates = {'num_patterns':0, 'no_patterns':True, 'running':False, 'completed':True, 'timeTaken':timeTaken }
+        updateStatus(token, updates, space_id)
+        return
+
     tripsdf1['service_id'] = configD.get('calendar_default_service_id','ALL')
     tripsdf1['direction_id'] = ''
     def assignDir(x):
@@ -267,27 +283,40 @@ def createGTFS(token, depotsList, space_id):
     order by pattern_id, stop_sequence
     """
     patternsdf1 = dbconnect.makeQuery(s1, output='df')
-    ts = cf.getTime()
-    updates = {'patterns':ts, 'num_patterns':len(patternsdf1)}
-    updateStatus(token, updates, space_id)
+    cf.logmessage(f"patternsdf1: {len(patternsdf1)} rows")
+    if not len(patternsdf1):
+        # Handle where this is empty : meaning there are no patterns under these routes; quit
+        cf.logmessage(f"No pattern with stops found under the {len(routes1df)} routes, can't make a GTFS")
+        ts = cf.getTime()
+        timeTaken = round(time.time()-tstart,2)
+        updates = {'num_patterns':0, 'no_patterns':True, 'running':False, 'completed':True, 'timeTaken':timeTaken }
+        updateStatus(token, updates, space_id)
+        return
+    else:
+        ts = cf.getTime()
+        updates = {'patterns':ts, 'num_patterns':len(patternsdf1)}
+        updateStatus(token, updates, space_id)
 
     # get all stops used in the patterns
     allStops = patternsdf1['stop_id'].unique().tolist()
     allStopsSQL = cf.quoteNcomma(allStops)
-    s1 = f"""select id as stop_id, name as stop_name, latitude, longitude from stops_master where id in ({allStopsSQL})
+    s1 = f"""select id as stop_id, name as stop_name, 
+    latitude as stop_lat, longitude as stop_lon 
+    from stops_master where id in ({allStopsSQL})
     """
     stopsdf1 = dbconnect.makeQuery(s1, output='df')
 
     # how many unmapped
-    unmapped = len(stopsdf1[stopsdf1['latitude']==''])
-    # map them with default lat-long
-    default_loc = configD.get('gtfs_default_loc').split(',')
-    defaut_lat = float(default_loc[0])
-    default_lon = float(default_loc[1])
-    stopsdf1['latitude'].replace(to_replace={'':defaut_lat}, inplace=True)
-    stopsdf1['longitude'].replace(to_replace={'':default_lon}, inplace=True)
-    stopsdf1.rename(columns={'latitude':'stop_lat','longitude':'stop_lon'}, inplace=True)
-
+    unmapped = len(stopsdf1[stopsdf1['stop_lat']==''])
+    if unmapped:
+        # map them with default lat-long
+        default_loc = configD.get('gtfs_default_loc').split(',')
+        defaut_lat = float(default_loc[0])
+        default_lon = float(default_loc[1])
+        stopsdf1['stop_lat'].replace(to_replace={'':defaut_lat}, inplace=True)
+        stopsdf1['stop_lon'].replace(to_replace={'':default_lon}, inplace=True)
+    cf.logmessage(f"stopsdf1: {len(stopsdf1)} rows, {unmapped} unmapped")
+    
     # save stops.txt
     stopsdf1.to_csv(os.path.join(gtfsFolder, 'stops.txt'), index=False)
     ts = cf.getTime()
@@ -300,23 +329,38 @@ def createGTFS(token, depotsList, space_id):
 
     # get all timings
     tripsListSQL = cf.quoteNcomma([x for x in tripsdf1['trip_id'].tolist() if len(x) > 0 ] )
-    s1 = f"""select trip_id, stop_sequence, arrival_time, departure_time from stop_times
-    where trip_id in ({tripsListSQL})
-    order by trip_id, stop_sequence
-    """
-    timingsdf1 = dbconnect.makeQuery(s1, output='df')
-
-    # populate departure_time wherever blank with same value as arrival_time
-    def departurePopulate(x):
-        if not x['departure_time']:
-            if x['arrival_time']:
-                return x['arrival_time']
-            else:
-                return ''
+    if not len(tripsListSQL.strip()):
+        cf.logmessage(f"No trip ids for given routes")
+        if configD['gtfs_default_tripPerPattern'].upper() == 'Y':
+            makeTrip = True
+            cf.logmessage("gtfs_default_tripPerPattern = Y so proceeding with creating dummy trips for each pattern")
         else:
-            return x['departure_time']
+            cf.logmessage(f"gtfs_default_tripPerPattern != Y and no valid trips, so cannot proceed with making GTFS")
+            ts = cf.getTime()
+            timeTaken = round(time.time()-tstart,2)
+            updates = {'num_trips':0, 'no_timings':True, 'running':False, 'completed':True, 'timeTaken':timeTaken }
+            updateStatus(token, updates, space_id)
+            return
 
-    timingsdf1['departure_time'] = timingsdf1.apply(lambda x: departurePopulate(x) , axis=1)
+    else:
+        s1 = f"""select trip_id, stop_sequence, arrival_time, departure_time from stop_times
+        where trip_id in ({tripsListSQL})
+        order by trip_id, stop_sequence
+        """
+        timingsdf1 = dbconnect.makeQuery(s1, output='df')
+
+        # populate departure_time wherever blank with same value as arrival_time
+        def departurePopulate(x):
+            if not x['departure_time']:
+                if x['arrival_time']:
+                    return x['arrival_time']
+                else:
+                    return ''
+            else:
+                return x['departure_time']
+
+        timingsdf1['departure_time'] = timingsdf1.apply(lambda x: departurePopulate(x) , axis=1)
+
 
     # merge stops into patternsdf1
     patternsdf2 = pd.merge(patternsdf1,stopsdf1, how='left',on='stop_id')
@@ -325,7 +369,10 @@ def createGTFS(token, depotsList, space_id):
     stopTimesArr = []
     tripsdf1['include'] = 1
     makeTripCount = 0
+    calculatedTimings = 0
+    stopTimesCols = ['trip_id','arrival_time','departure_time','stop_id','stop_sequence']
     cf.logmessage(f"Processing {len(tripsdf1)} trips for trips and stop_times")
+    
     for N,tr in tripsdf1.iterrows():
         makeTrip = False
         patternsdf3 = patternsdf2[patternsdf2['pattern_id'] == tr['pattern_id']].copy().reset_index(drop=True)
@@ -344,15 +391,16 @@ def createGTFS(token, depotsList, space_id):
                 continue
         
         else:
+            # check: this should only happen if there's valid timingsdf1 data to start with
             timingsdf2 = timingsdf1[timingsdf1['trip_id'] == tr['trip_id']].copy().reset_index(drop=True)
         
-        if not len(timingsdf2):
-            cf.logmessage(f"No timings entries found for trip {tr['trip_id']} under pattern {tr['pattern_id']}")
-            if configD['gtfs_default_tripPerPattern'].upper() == 'Y':
-                makeTrip = True
-            else:
-                tripsdf1.at[N,'include'] = 0
-                continue
+            if not len(timingsdf2):
+                cf.logmessage(f"No timings entries found for trip {tr['trip_id']} under pattern {tr['pattern_id']}")
+                if configD['gtfs_default_tripPerPattern'].upper() == 'Y':
+                    makeTrip = True
+                else:
+                    tripsdf1.at[N,'include'] = 0
+                    continue
         
         if makeTrip:
             trip_id = cf.makeUID()
@@ -373,10 +421,45 @@ def createGTFS(token, depotsList, space_id):
             cf.logmessage(f"Warning: inconsistent lengths for pattern {tr['pattern_id']} {len(tr['pattern_id'])}, trip {tr['trip_id']} {len(tr['trip_id'])}")
         
         # do stop times
-        st1df = pd.merge(patternsdf3, timingsdf2, how='left', on='stop_sequence')
-        stopTimesArr.append(st1df)
+        st2df = pd.merge(patternsdf3, timingsdf2, how='left', on='stop_sequence')
+        # get shape_dist_traveled
+        # st2df = pd.merge(st1df, stopsdf1[['stop_id','stop_lat','stop_lon']], on='stop_id',how='left')
+        cf.computeDistance(st2df)
+
+
+        # put proper time format
+        st2df['arrival_time'] = st2df['arrival_time'].apply(cf.timeFormat)
+        st2df['departure_time'] = st2df['departure_time'].apply(cf.timeFormat)
+
+        # interpolate timings
+        if configD.get('gtfs_default_calcTimings').upper() == 'Y':
+            try:
+                speed = float(configD.get('gtfs_default_speed','20'))
+            except:
+                logmessage(f"Warning: invalid gtfs_default_speed value, assuming 20 km/hr")
+                speed = 20
+            for N in range(1,len(st2df)):
+                prev = st2df.at[N-1,'departure_time']
+
+                if cf.timeFormat(st2df.at[N,'departure_time']) and (not cf.timeFormat(st2df.at[N,'arrival_time'])):
+                    # edge case: if departure time is populated but not arrival time
+                    st2df.at[N,'arrival_time'] = st2df.at[N,'departure_time']
+                
+                elif not cf.timeFormat(st2df.at[N,'arrival_time']):
+                    # if arrival time isn't populated
+                    journeyTime = round(st2df.at[N,'ll_dist']/speed*3600)
+                    st2df.at[N,'arrival_time'] = cf.timeAdd(prev,journeyTime)
+                    calculatedTimings += 1
+                    st2df.at[N,'departure_time'] = st2df.at[N,'arrival_time']
+                    # for now we are assuming departure_time to be same as arrival_time only when calculating
+                elif not cf.timeFormat(st2df.at[N,'departure_time']):
+                    # if arrival time is populated but just departure time is not
+                    st2df.at[N,'departure_time'] = st2df.at[N,'arrival_time']
+
+        # print(st2df)
+        stopTimesArr.append(st2df)
         
-        if (N+1)%100 == 0: 
+        if (N+1)%50 == 0: 
             updates = { 'trips_processed': N+1 }
             updateStatus(token, updates, space_id)
             cf.logmessage(f"Processed {N+1} trips")
@@ -393,16 +476,12 @@ def createGTFS(token, depotsList, space_id):
     updateStatus(token, updates, space_id)
 
     # stop_times
-    st2df = pd.concat(stopTimesArr, sort=False, ignore_index=True )
+    st3df = pd.concat(stopTimesArr, sort=False, ignore_index=True )
+    # st3df[stopTimesCols].to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
+    st3df.to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
 
-    # make arrival and departure times as proper hh:mm:ss
-    st2df['arrival_time'] = st2df['arrival_time'].apply(cf.timeFormat)
-    st2df['departure_time'] = st2df['departure_time'].apply(cf.timeFormat)
-
-    stopTimesCols = ['trip_id','arrival_time','departure_time','stop_id','stop_sequence']
-    st2df[stopTimesCols].to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
     ts = cf.getTime()
-    updates = {'stop_times.txt':ts, 'num_stop_times':len(st2df) }
+    updates = {'stop_times.txt':ts, 'num_stop_times':len(st3df), 'calculatedTimings':calculatedTimings }
     updateStatus(token, updates, space_id)
 
     # create GTFS zip

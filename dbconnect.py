@@ -111,8 +111,8 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
     return result
 
 
-def execSQL(s1):
-    cf.logmessage(' '.join(s1.split()))
+def execSQL(s1, noprint=False):
+    if not noprint: cf.logmessage(' '.join(s1.split()))
     ps_connection = threaded_postgreSQL_pool.getconn()
     ps_cursor = ps_connection.cursor()
     ps_cursor.execute(s1)
