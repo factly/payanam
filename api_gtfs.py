@@ -370,7 +370,6 @@ def createGTFS(token, depotsList, space_id):
     tripsdf1['include'] = 1
     makeTripCount = 0
     calculatedTimings = 0
-    stopTimesCols = ['trip_id','arrival_time','departure_time','stop_id','stop_sequence']
     cf.logmessage(f"Processing {len(tripsdf1)} trips for trips and stop_times")
     
     for N,tr in tripsdf1.iterrows():
@@ -431,6 +430,9 @@ def createGTFS(token, depotsList, space_id):
         st2df['arrival_time'] = st2df['arrival_time'].apply(cf.timeFormat)
         st2df['departure_time'] = st2df['departure_time'].apply(cf.timeFormat)
 
+        # timepoint
+        st2df['timepoint'] = '0' # approx by default; change to 1 if its a user-entered time value
+
         # interpolate timings
         if configD.get('gtfs_default_calcTimings').upper() == 'Y':
             try:
@@ -452,10 +454,14 @@ def createGTFS(token, depotsList, space_id):
                     calculatedTimings += 1
                     st2df.at[N,'departure_time'] = st2df.at[N,'arrival_time']
                     # for now we are assuming departure_time to be same as arrival_time only when calculating
-                elif not cf.timeFormat(st2df.at[N,'departure_time']):
-                    # if arrival time is populated but just departure time is not
-                    st2df.at[N,'departure_time'] = st2df.at[N,'arrival_time']
+                else:
+                    st2df.at[N,'timepoint'] = '1' # arrival time is user-entered, so keep timepoint as 1 for this
+                    if not cf.timeFormat(st2df.at[N,'departure_time']):
+                        # if arrival time is populated but just departure time is not
+                        st2df.at[N,'departure_time'] = st2df.at[N,'arrival_time']
 
+                # TO DO: In case of user-entered times, calc speed and flag if too high
+        
         # print(st2df)
         stopTimesArr.append(st2df)
         
@@ -477,8 +483,9 @@ def createGTFS(token, depotsList, space_id):
 
     # stop_times
     st3df = pd.concat(stopTimesArr, sort=False, ignore_index=True )
-    # st3df[stopTimesCols].to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
-    st3df.to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
+    stopTimesCols = ['trip_id','arrival_time','departure_time','stop_id','stop_sequence', 'timepoint']
+    st3df[stopTimesCols].to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
+    # st3df.to_csv(os.path.join(gtfsFolder, 'stop_times.txt'), index=False)
 
     ts = cf.getTime()
     updates = {'stop_times.txt':ts, 'num_stop_times':len(st3df), 'calculatedTimings':calculatedTimings }
