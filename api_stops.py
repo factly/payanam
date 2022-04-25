@@ -33,10 +33,6 @@ def fetchNumRoutes():
     return routeNumD
 
 
-    
-
-
-
 
 ###############
 
