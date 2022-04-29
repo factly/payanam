@@ -9,7 +9,7 @@ const uniqueStopsTable_height = "300px";
 const normalColor = "blue";
 const selectedColor = "yellow"
 
-const LassoLimit = 50;
+const lassoLimit = 50;
 var tableData = [];
 var chosenStops = [];
 // var dataBank = [];
@@ -275,7 +275,7 @@ $(document).ready(function() {
     map.on('lasso.finished', (event) => {
         console.log(`${event.layers.length} stops selected by lasso tool`);
         // sanity check
-        if(event.layers.length > LassoLimit) {
+        if(event.layers.length > lassoLimit) {
             alert(`${event.layers.length} stops selected by lasso? This doesn't seem right. please zoom in and make a smaller selection.`);
             return;
         }
