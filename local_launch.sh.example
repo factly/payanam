@@ -9,4 +9,4 @@ export DB_PW='password'
 export SPACE_ID=1
 export CHUNKSIZE=10000
 
-uvicorn payanam_launch:app --port 5500 --reload
+uvicorn payanam_launch:app --port 5500 --host 0.0.0.0 --reload
