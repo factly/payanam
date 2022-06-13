@@ -251,7 +251,7 @@ function mapStops(data) {
             .bindTooltip(tooltipContent, {direction:'top', offset: [0,-5]})
             .bindPopup(popupContent);
         globalAllStops[e.id].properties = e;
-        globalAllStops[e.id].on('click',markerOnClick);
+        // globalAllStops[e.id].on('click',markerOnClick);
         globalAllStops[e.id].addTo(stopsLayer);
         mapCounter ++;
     });
