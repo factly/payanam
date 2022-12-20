@@ -178,3 +178,33 @@ def getDepots():
     returnD['depots'] = depotsList
     return returnD
 
+
+##########
+
+@app.get("/API/getRouteShapes", tags=["routes"])
+def getRouteShapes(route_id: str, precision: Optional[int]=6):
+    cf.logmessage("getRouteShapes api call")
+    returnD = { "message": "success"}
+
+    s1 = f"""
+    select t1.id as route_id, t1.name as route_name,
+    t2.id as pattern_id, t2.name as pattern_name,
+    ST_AsEncodedPolyline(ST_MakeLine(Q.geopoint::geometry ORDER BY Q.stop_sequence), {precision}) AS geoline
+    from routes as t1
+    left join patterns as t2
+    on t1.id = t2.route_id
+    left join (SELECT t3.stop_sequence, t4.geopoint, t3.pattern_id
+        from pattern_stops as t3
+        left join stops_master as t4
+        on t3.stop_id = t4.id
+        where t4.geopoint is not null
+        order by t3.stop_sequence
+        ) as Q
+    on t2.id = Q.pattern_id
+    where t1.id = '{route_id}'
+    group by t1.id, t2.id
+    """
+
+    returnD['patterns'] = dbconnect.makeQuery(s1, output="list")
+    return returnD
+    
