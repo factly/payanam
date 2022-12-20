@@ -102,8 +102,7 @@ CREATE TABLE stops_master(
     id VARCHAR(10) NOT NULL PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     description VARCHAR(500) NULL,
-    latitude DECIMAL(11,8) NULL,
-    longitude DECIMAL(11,8) NULL,
+    
     geopoint GEOGRAPHY(POINT) NULL,
     stop_group_id VARCHAR(10) NULL,
     is_disabled BOOLEAN NULL,
@@ -112,8 +111,13 @@ CREATE TABLE stops_master(
     created_by VARCHAR(100) NULL,
     last_updated TIMESTAMP(0) NULL,
     modified_by VARCHAR(100) NULL,
-    CONSTRAINT stops_master_c1 UNIQUE (space_id, latitude, longitude)
+    CONSTRAINT stops_master_c1 UNIQUE (space_id, geopoint)
 );
+CREATE INDEX stops_master_geom1 ON stops_master USING GIST (geopoint);
+
+-- 2022-12-20 : removed:
+-- latitude DECIMAL(11,8) NULL,
+-- longitude DECIMAL(11,8) NULL,
 
 
 DROP TABLE IF EXISTS stop_groups;

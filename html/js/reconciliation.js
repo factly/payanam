@@ -105,6 +105,7 @@ var stopsTable = new Tabulator("#stopsTable", {
         {title:"lat", field:"latitude", headerFilter:"input", headerTooltip:"latitude", width:100, headerSort:true },
         {title:"lon", field:"longitude", headerFilter:"input", headerTooltip:"longitude", width:100, headerSort:true },
         {title:"routes", field:"num_routes", headerFilter:"input", headerTooltip:"number of routes this stop is used in", width:120, headerSort:true },
+        {title:"grid", field:"grid", headerFilter:"input", headerTooltip:"OpenLocationCode grid", width:120, headerSort:true },
         //{title:"zap", field:"zap", headerFilter:"input", headerTooltip:"zap", width:150, headerSort:true },
         // {title:"route", field:"routeName", headerFilter:"input", headerTooltip:"Route Name", width:100, headerSort:true },
         // {title:"depot", field:"depot", headerFilter:"input", headerTooltip:"depot", width:50, headerSort:true, headerVertical:true },
@@ -118,6 +119,7 @@ stopsTable.on("rowSelected", function(row){
     colorMap(row.getData().id,selectedColor);
     globalSelected.add(row.getData().id);
     countSelectedStops();
+    $('#stopHolder').html(`<b>${row.getData().id}</b> ${row.getData().name}`);
 });
 
 stopsTable.on("rowDeselected", function(row){
@@ -143,20 +145,23 @@ stopsTable.on("rowDeselected", function(row){
 // #################################
 /* 3. Initiate map */
 // background layers, using Leaflet-providers plugin. See https://github.com/leaflet-extras/leaflet-providers
+var cartoPositron = L.tileLayer.provider('CartoDB.Positron');
 var OSM = L.tileLayer.provider('OpenStreetMap.Mapnik');
-var MBlight = L.tileLayer.provider('MapBox', {id: 'nikhilsheth.m0mmobne', accessToken: MBaccessToken });
-var MBdark = L.tileLayer.provider('MapBox', {id: 'nikhilsheth.jme9hi44', accessToken: MBaccessToken });
-var MBstreets = L.tileLayer.provider('MapBox', {id: 'nikhilsheth.m0mlpl2d', accessToken: MBaccessToken });
-var MBsatlabel = L.tileLayer.provider('MapBox', {id: 'nikhilsheth.m0mmaa87', accessToken: MBaccessToken });
-var OSMIndia = L.tileLayer.provider('MapBox', {id: 'openstreetmap.1b68f018', accessToken: MBaccessToken });
 var gStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']});
 var gHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']});
-var baseLayers = { "OpenStreetMap.org" : OSM, "OpenStreetMap.IN": OSMIndia, "Streets": MBstreets, "Satellite": MBsatlabel, "Light": MBlight, "Dark" : MBdark, "gStreets": gStreets, "gHybrid": gHybrid };
+var esriWorld = L.tileLayer.provider('Esri.WorldImagery');
+var baseLayers = { 
+    "OpenStreetMap.org" : OSM, 
+    "Carto Positron": cartoPositron, 
+    "ESRI Satellite": esriWorld,
+    "gStreets": gStreets, 
+    "gHybrid": gHybrid
+};
 
 var map = new L.Map('map', {
     center: STARTLOCATION,
     zoom: STARTZOOM,
-    layers: [gStreets],
+    layers: [cartoPositron],
     scrollWheelZoom: true,
     maxZoom: 20
 });
@@ -253,6 +258,13 @@ map.on('move', function(e) {
 
 // lat, long in url
 var hash = new L.Hash(map);
+
+// info box
+L.control.custom({
+    position: 'bottomright',
+    content: `<span id="stopHolder"></span>`,
+    classes: 'divOnMap_right'
+}).addTo(map);
 
 // #####################################################################
 // RUN ON PAGE LOAD
@@ -442,7 +454,7 @@ function mapStops(normal=true) {
             radius: normal ? 5 : 3,
             // fillColor: directionDecide(stoprow),
             fillColor: normal ? 'blue' : 'orange',
-            color: 'black',
+            color: 'silver',
             weight: 0.5,
             opacity: normal? 1 : 0,
             fillOpacity: 0.5

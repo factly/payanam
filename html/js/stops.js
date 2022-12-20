@@ -33,6 +33,7 @@ var stopsTable = new Tabulator("#stopsTable", {
         { title: "lat", field: "latitude", headerFilter: "input" },
         { title: "lon", field: "longitude", headerFilter: "input" },
         { title: "descr", field: "description", headerFilter: "input" },
+        { title: "grid", field: "grid", headerFilter: "input" },
         { title: "group", field: "group", headerFilter: "input" }
     ]
 });
@@ -228,7 +229,7 @@ function mapStops(data) {
         renderer: myRenderer,
         radius: 5,
         fillColor: normalColor,
-        color: 'black',
+        color: 'white',
         weight: 1,
         opacity: 1,
         fillOpacity: 0.7
@@ -374,39 +375,39 @@ function mapMoveHere(lat,lon) {
 
 }
 
-function showTrain(trainNo) {
-    console.log(trainNo);
-    var seq = `Train ${trainNo} schedule:<br>sr - stnCode - dayCnt - depTime - distance<br>`;
-    globalTrainsData[trainNo].forEach(r => {
-        if(!r.latitude)
-            seq += `<span onclick="setupStopEditing('${r.stnCode}')"><b>${r.sr} - ${r.stnCode} - ${r.dayCnt} - ${r.depTime} - ${parseInt(r.distance)} km</b></span><br>`
-        else seq += `<span onclick="mapMoveHere(${r.latitude},${r.longitude})">${r.sr} - ${r.stnCode} - ${r.dayCnt} - ${r.depTime} - ${parseInt(r.distance)} km</span><br>`
-        // seq += `${r.sr}\t${r.stnCode}\t${r.dayCnt}\t${r.depTime}\t${parseInt(r.distance)} km\n`;
-    });
-    $('#dump').html(seq);
+// function showTrain(trainNo) {
+//     console.log(trainNo);
+//     var seq = `Train ${trainNo} schedule:<br>sr - stnCode - dayCnt - depTime - distance<br>`;
+//     globalTrainsData[trainNo].forEach(r => {
+//         if(!r.latitude)
+//             seq += `<span onclick="setupStopEditing('${r.stnCode}')"><b>${r.sr} - ${r.stnCode} - ${r.dayCnt} - ${r.depTime} - ${parseInt(r.distance)} km</b></span><br>`
+//         else seq += `<span onclick="mapMoveHere(${r.latitude},${r.longitude})">${r.sr} - ${r.stnCode} - ${r.dayCnt} - ${r.depTime} - ${parseInt(r.distance)} km</span><br>`
+//         // seq += `${r.sr}\t${r.stnCode}\t${r.dayCnt}\t${r.depTime}\t${parseInt(r.distance)} km\n`;
+//     });
+//     $('#dump').html(seq);
 
-    Object.entries(globalTrainsData).forEach(([key, arr]) => {
-        if (key != trainNo) {
-            if(trainsLayer.hasLayer(globalTrainsLines[key])) {
-                console.log("removing",key);
-                globalTrainsLines[key].removeFrom(trainsLayer);
-            }
-        }
-        else {
-            if(! trainsLayer.hasLayer(globalTrainsLines[key])) {
-                console.log("showing",key);
-                globalTrainsLines[key].addTo(trainsLayer);
+//     Object.entries(globalTrainsData).forEach(([key, arr]) => {
+//         if (key != trainNo) {
+//             if(trainsLayer.hasLayer(globalTrainsLines[key])) {
+//                 console.log("removing",key);
+//                 globalTrainsLines[key].removeFrom(trainsLayer);
+//             }
+//         }
+//         else {
+//             if(! trainsLayer.hasLayer(globalTrainsLines[key])) {
+//                 console.log("showing",key);
+//                 globalTrainsLines[key].addTo(trainsLayer);
 
-            }
-        }
-    });
+//             }
+//         }
+//     });
     
-    // zoom map to the route 
-    if(trainsLayer.getLayers().length) {
-        map.flyToBounds(trainsLayer.getBounds(), { maxZoom: 11, duration: 0.5 });    
-    }
+//     // zoom map to the route 
+//     if(trainsLayer.getLayers().length) {
+//         map.flyToBounds(trainsLayer.getBounds(), { maxZoom: 11, duration: 0.5 });    
+//     }
     
-}
+// }
 
 function updateStopLocation(id) {
     console.log(id);
@@ -431,14 +432,14 @@ function updateStopLocation(id) {
         return;
     }
 
-    let payload = [{ 
+    let payload = {"data": [{ 
         "update": true,
         "stop_id": id, 
         "name": name,
         "latitude": lat,
         "longitude": lon,
         "description": `map_edit_${getTodayDate()}`
-    }];
+    }]};
     console.log(payload);
     $('#updateStop_status').html(`Sending...`);
     $.ajax({
@@ -475,7 +476,7 @@ function unmapped() {
 
 function setupStopEditing(id, name='') {
     $('#stopHolder').html(`<span id="id">${id}</span><br><input id="new_name" value="${name}" placeholder="stop name"><br>
-            <button onclick="updateStopLocation('${id}')">Set new location</button><br>
+            <button onclick="updateStopLocation('${id}')">Set new location</button> <button onclick="renameStop('${id}')">Rename</button><br>
             <span id="updateStop_status"></span><br>`);
 }
 
@@ -550,8 +551,57 @@ function colorMap(idsList,chosenColor) {
         if(globalAllStops[e]) {
             globalAllStops[e].setStyle({
                 fillColor : chosenColor,
+                color: 'black',
                 fillOpacity : 1.0
             });
         }
+    });
+}
+
+function renameStop(id) {
+    console.log('renameStop',id);
+    var oldData = stopsTable.getRow(id).getData();
+    console.log(oldData);
+    
+    var name = $('#new_name').val();
+    if(name == oldData.name) {
+        alert("No change in name detected");
+        return;
+    }
+
+    if(!name) {
+        alert("Enter a stop name");
+        return;
+    }
+
+    let payload = { "data": [{ 
+        "stop_id": id, 
+        "name": name
+    }]};
+    console.log(payload);
+    $('#updateStop_status').html(`Sending...`);
+    $.ajax({
+        url: `/API/updateStops`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        processData: false,  // tell jQuery not to process the data
+        contentType: 'application/json',
+        success: function (returndata) {
+            $('#updateStop_status').html(`Updated successfully.`);
+
+            // update in table also
+            let row = stopsTable.getRow(id);
+            row.update({ name: name });
+            // update in map also
+            mapStops(stopsTable.getData());
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+            var message = JSON.parse(jqXHR.responseText)['message'];
+            if(message) $("#updateStop_status").html(message);
+            else $("#updateStop_status").html(jqXHR.responseText);
+        },
     });
 }

@@ -23,15 +23,22 @@ def loadRoutesList(req: loadRoutesList_payload):
     cf.logmessage("loadRoutes api call")
     space_id = int(os.environ.get('SPACE_ID',1))
 
+    returnD = { 'message': "success"}
+    
+
     s1 = f"""select id, name, depot from routes 
     where space_id = {space_id}
     order by depot, name"""
-    df = dbconnect.makeQuery(s1, output='df',keepCols=True)
+    df = dbconnect.makeQuery(s1, output='df')
+
+    if not len(df):
+        returnD['routes'] = []
+        returnD['depots'] = []
+        return returnD
 
     df['depot'].replace(to_replace={'':'MISC'}, inplace=True)
     # df.rename(columns={'name':'text'}, inplace=True)
 
-    returnD = { 'message': "success"}
     
     # # TO DO: group by depots, route groups etc in this format: 
     # # https://select2.org/data-sources/formats#grouped-data
@@ -163,7 +170,7 @@ def loadRouteDetails(req: loadRouteDetails_payload):
     # where t1.pattern_id in ({pattern_idsListSQL})
     # order by t1.pattern_id, t1.stop_sequence
     # """
-    # df1 = dbconnect.makeQuery(s3, output='df', keepCols=True)
+    # df1 = dbconnect.makeQuery(s3, output='df')
     # # group them
     # returnD['pattern_stops'] = {}
 
