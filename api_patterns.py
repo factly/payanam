@@ -217,7 +217,9 @@ def loadPattern(req: loadPattern_payload):
     returnD = { "message": "success"}
 
     # note: currently, frontend isn't using the lat-longs here, can make it use them later.
-    s1 = f"""select t1.*, t2.name, t2.latitude, t2.longitude from pattern_stops as t1 
+    s1 = f"""select t1.*, t2.name, 
+    ST_Y(t2.geopoint::geometry) as latitude, ST_X(t2.geopoint::geometry) as longitude
+    from pattern_stops as t1 
     left join stops_master as t2 
     on t1.stop_id = t2.id 
     where t1.space_id = {space_id}

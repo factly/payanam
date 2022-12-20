@@ -39,7 +39,7 @@ assert threaded_postgreSQL_pool, "Could not create DB connection"
 
 cf.logmessage("DB Connected")
 
-def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=True, engine=None, noprint=False):
+def makeQuery(s1, output='df', lowerCaseColumns=False, fillna=True, engine=None, noprint=False):
     '''
     output choices:
     oneValue : ex: select count(*) from table1 (output will be only one value)

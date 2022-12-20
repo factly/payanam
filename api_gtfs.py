@@ -301,7 +301,7 @@ def createGTFS(token, depotsList, space_id):
     allStops = patternsdf1['stop_id'].unique().tolist()
     allStopsSQL = cf.quoteNcomma(allStops)
     s1 = f"""select id as stop_id, name as stop_name, 
-    latitude as stop_lat, longitude as stop_lon 
+    ST_Y(geopoint::geometry) as stop_lat, ST_X(geopoint::geometry) as stop_lon 
     from stops_master where id in ({allStopsSQL})
     """
     stopsdf1 = dbconnect.makeQuery(s1, output='df')

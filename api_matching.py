@@ -39,7 +39,9 @@ def suggestMatches(req: suggestMatches_payload):
     space_id = int(os.environ.get('SPACE_ID',1))
     stop_name_zap = cf.zapper(req.name)
 
-    s1 = f"""select id, zap, name, latitude, longitude from stops_master
+    s1 = f"""select id, zap, name, 
+    ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
+    from stops_master
     where space_id = {space_id}
     and latitude between {req.minLat} and {req.maxLat}
     and longitude between {req.minLon} and {req.maxLon}
@@ -128,7 +130,9 @@ def autoMapPattern(req: autoMapPattern_payload):
     else:
         returnD['noneed'] = False
 
-    s1 = f"""select id as stop_id, zap, name, latitude, longitude from stops_master
+    s1 = f"""select id as stop_id, zap, name, 
+    ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
+    from stops_master
     where space_id = {space_id}
     and latitude between {req.minLat} and {req.maxLat}
     and longitude between {req.minLon} and {req.maxLon}
@@ -223,7 +227,7 @@ def unMappedData(req: unMappedData_payload):
     left join stops_master as t4
     on t1.stop_id = t4.id
     where t3.space_id = {space_id}
-    and t4.latitude is null
+    and t4.geopoint is null
     order by t3.depot, route, pattern, t1.stop_sequence
     """
     list1 = dbconnect.makeQuery(s1, output='list')

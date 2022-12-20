@@ -160,23 +160,6 @@ def loadRouteDetails(req: loadRouteDetails_payload):
     if not len(returnD['patterns']):
         return returnD
 
-    # removing this.. loading each pattern individually instead in a separate api call
-    # pattern_idsList = [x['id'] for x in returnD['patterns']]
-    # pattern_idsListSQL = cf.quoteNcomma(pattern_idsList)
-    # s3 = f"""select t1.*, t2.name, t2.latitude, t2.longitude 
-    # from pattern_stops as t1
-    # left join stops_master as t2
-    # on t1.stop_id = t2.id
-    # where t1.pattern_id in ({pattern_idsListSQL})
-    # order by t1.pattern_id, t1.stop_sequence
-    # """
-    # df1 = dbconnect.makeQuery(s3, output='df')
-    # # group them
-    # returnD['pattern_stops'] = {}
-
-    # for pid in pattern_idsList:
-    #     df2 = df1[df1['pattern_id'] == pid]
-    #     returnD['pattern_stops'][pid] = df2.to_dict(orient='records')
 
     return returnD
 
