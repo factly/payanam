@@ -106,11 +106,11 @@ CREATE TABLE stops_master(
     stop_group_id VARCHAR(10) NULL,
     is_disabled BOOLEAN NULL,
     zap VARCHAR(200) NULL,
-    created_on TIMESTAMP(0) NULL,
+    created_on TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_by VARCHAR(100) NULL,
-    last_updated TIMESTAMP(0) NULL,
+    last_updated TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_by VARCHAR(100) NULL,
-    CONSTRAINT stops_master_c1 UNIQUE (space_id, geopoint)
+    CONSTRAINT stops_master2_c1 UNIQUE (space_id, geopoint)
 );
 CREATE INDEX stops_master_geom1 ON stops_master USING GIST (geopoint);
 

@@ -141,8 +141,8 @@ def addStops(req: addStops_payload):
     df1['space_id'] = int(os.environ.get('SPACE_ID',1))
     df1['id'] = cf.assignUID(df1)
     
-    timestamp = cf.getTime()
-    df1['created_on'] = timestamp
+    # timestamp = cf.getTime()
+    # df1['created_on'] = timestamp
     df1['created_by'] = '' # will bring in username later
 
     not_added = []; added = []
@@ -151,9 +151,9 @@ def addStops(req: addStops_payload):
             cf.logmessage("No name:",row)
             continue
         
-        icols=['space_id', 'id', 'name', 'created_on', 'created_by', 'zap']
+        icols=['space_id', 'id', 'name', 'created_by', 'zap']
         ivals= [f"{row['space_id']}", f"'{row['id']}'", f"'{row['name']}'", \
-            "CURRENT_TIMESTAMP", f"'{row['created_by']}'", f"'{cf.zapper(row['name'])}'" ] 
+            f"'{row['created_by']}'", f"'{cf.zapper(row['name'])}'" ] 
         
         if row.get('latitude',False) and row.get('longitude',False): 
             icols.append('geopoint')
@@ -241,12 +241,17 @@ def updateStops(req: updateStops_payload):
         if row.get('description'): uterms.append(f"description='{row['description']}'")
         if row.get('group_id'): uterms.append(f"group_id='{row['group_id']}'")
 
-        u1 = f"""update stops_master set {', '.join(uterms)} where id='{row['stop_id']}' """
-        uCount = dbconnect.execSQL(u1)
-        if not uCount:
+        if len(uterms):
+            uterms.append(f"last_updated=CURRENT_TIMESTAMP")
+
+            u1 = f"""update stops_master set {', '.join(uterms)} where id='{row['stop_id']}' """
+            uCount = dbconnect.execSQL(u1)
+            if not uCount:
+                not_updated.append(row)
+            else:
+                updated.append(row)
+        else: 
             not_updated.append(row)
-        else:
-            updated.append(row)
 
     returnD = { 'message': "success", "num_updated": 0, "num_not_updated":0, "updated":[], "not_updated":[] }
     if len(updated):
