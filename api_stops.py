@@ -47,6 +47,7 @@ class loadStops_payload(BaseModel):
 @app.post("/API/loadStops", tags=["stops"])
 def loadStops(req: loadStops_payload):
     cf.logmessage("loadStops api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
 
     if len(req.data): 
         if ['zap'] not in req.data:
@@ -56,11 +57,18 @@ def loadStops(req: loadStops_payload):
         # cols = ','.join(['id','name','description','latitude','longitude','stop_group_id','created_on','created_by','last_updated','modified_by'])
         cols = ','.join(['id','name','description','latitude','longitude','zap'])
     
-    space_id = int(os.environ.get('SPACE_ID',1))
+    # drop-in replace lat, lon with gis conv
+    cols = cols.replace('latitude', 'ST_Y(geopoint::geometry) as latitude').replace('longitude','ST_X(geopoint::geometry) as longitude')
+    
     s1 = f"select {cols} from stops_master where space_id = {space_id}"
     df = dbconnect.makeQuery(s1, output='df', fillna=False)
+    
     returnD = { 'message': "success"}
     if len(df):
+        # avoiding errors in .to_dict() that come with float columns blanks becoming NaN in pandas
+        df['latitude'].fillna('', inplace=True)
+        df['longitude'].fillna('', inplace=True)
+    
         if req.unique:
             routeNumD = fetchNumRoutes()
             df['num_routes'] = df['id'].apply(lambda x: routeNumD.get(x,0))
@@ -133,8 +141,8 @@ def addStops(req: addStops_payload):
     df1['space_id'] = int(os.environ.get('SPACE_ID',1))
     df1['id'] = cf.assignUID(df1)
     
-    timestamp = cf.getTime()
-    df1['created_on'] = timestamp
+    # timestamp = cf.getTime()
+    # df1['created_on'] = timestamp
     df1['created_by'] = '' # will bring in username later
 
     not_added = []; added = []
@@ -143,19 +151,22 @@ def addStops(req: addStops_payload):
             cf.logmessage("No name:",row)
             continue
         
-        icols=['space_id', 'id', 'name', 'created_on', 'created_by', 'zap']
+        icols=['space_id', 'id', 'name', 'created_by', 'zap']
         ivals= [f"{row['space_id']}", f"'{row['id']}'", f"'{row['name']}'", \
-            "CURRENT_TIMESTAMP", f"'{row['created_by']}'", f"'{cf.zapper(row['name'])}'" ] 
-        if row.get('latitude'): 
-            icols.append('latitude')
-            ivals.append(f"{row['latitude']}")
-        if row.get('longitude'): 
-            icols.append('longitude')
-            ivals.append(f"{row['longitude']}")
-        if row.get('description'): 
+            f"'{row['created_by']}'", f"'{cf.zapper(row['name'])}'" ] 
+        
+        if row.get('latitude',False) and row.get('longitude',False): 
+            icols.append('geopoint')
+            ivals.append(f"ST_GeogFromText('SRID=4326;POINT({row['longitude']} {row['latitude']})')")
+        
+        # if row.get('longitude'): 
+        #     icols.append('longitude')
+        #     ivals.append(f"{row['longitude']}")
+        
+        if row.get('description',False): 
             icols.append('description')
             ivals.append(f"'{row['description']}'")
-        if row.get('group_id'): 
+        if row.get('group_id',False): 
             icols.append('group_id')
             ivals.append(f"'{row['group_id']}'")
         
@@ -222,17 +233,25 @@ def updateStops(req: updateStops_payload):
         if row.get('name'): 
             uterms.append(f"name='{row['name']}'")
             uterms.append(f"zap='{cf.zapper(row['name'])}'")
-        if row.get('latitude'): uterms.append(f"latitude={row['latitude']}")
-        if row.get('longitude'): uterms.append(f"longitude={row['longitude']}")
+
+        if row.get('latitude',False) and row.get('longitude',False) : 
+            uterms.append(f"geopoint=ST_GeogFromText('SRID=4326;POINT({row['longitude']} {row['latitude']})')")
+        # if row.get('longitude'): uterms.append(f"longitude={row['longitude']}")
+        
         if row.get('description'): uterms.append(f"description='{row['description']}'")
         if row.get('group_id'): uterms.append(f"group_id='{row['group_id']}'")
 
-        u1 = f"""update stops_master set {', '.join(uterms)} where id='{row['stop_id']}' """
-        uCount = dbconnect.execSQL(u1)
-        if not uCount:
+        if len(uterms):
+            uterms.append(f"last_updated=CURRENT_TIMESTAMP")
+
+            u1 = f"""update stops_master set {', '.join(uterms)} where id='{row['stop_id']}' """
+            uCount = dbconnect.execSQL(u1)
+            if not uCount:
+                not_updated.append(row)
+            else:
+                updated.append(row)
+        else: 
             not_updated.append(row)
-        else:
-            updated.append(row)
 
     returnD = { 'message': "success", "num_updated": 0, "num_not_updated":0, "updated":[], "not_updated":[] }
     if len(updated):
@@ -341,7 +360,9 @@ def searchStops(
     if mapped.lower() == 'y':
         mappedQuery = "and latitude is not null and longitude is not null"
     
-    s1 = f"""select name, latitude, longitude from stops_master
+    s1 = f"""select name, 
+    ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
+    from stops_master
     where space_id = {space_id}
     and name ilike '%{q}%'
     {mappedQuery}
@@ -504,9 +525,9 @@ def combineStops(req: combineStops_payload ):
             raise HTTPException(status_code=400, detail="Invalid data")
 
         target_stop_id = cf.makeUID()
-        icols=['space_id', 'id', 'name', 'latitude', 'longitude', 'created_on', 'zap']
-        ivals= [f"{space_id}", f"'{target_stop_id}'", f"'{req.new_name}'", f"{req.new_latitude}", f"{req.new_longitude}" \
-            "CURRENT_TIMESTAMP", f"'{cf.zapper(req.new_name)}'" ] 
+        icols=['space_id', 'id', 'name', 'zap', 'geopoint']
+        ivals= [f"{space_id}", f"'{target_stop_id}'", f"'{req.new_name}'", f"'{cf.zapper(req.new_name)}'", \
+            f"ST_GeogFromText('SRID=4326;POINT({req.new_longitude} {req.new_latitude})')" ] 
 
         if row.get('description'): 
             icols.append('description')
@@ -524,7 +545,7 @@ def combineStops(req: combineStops_payload ):
 
     else:
         target_stop_id = req.target_id
-        s1 = f"select count(*) from stops_master where space_id={space_id} and id='{target_stop_id}'"
+        s1 = f"select count(id) from stops_master where space_id={space_id} and id='{target_stop_id}'"
         s1Count = dbconnect.makeQuery(s1, output='oneValue')
         if s1Count != 1:
             raise HTTPException(status_code=400, detail="Invalid target_id")

@@ -189,14 +189,14 @@ async def deleteTrip(req: deleteTrip_payload):
     trip_id = req.trip_id
 
     # check if its there in trips table and stop_times table
-    s1 = f"""select count(*) from trips
+    s1 = f"""select count(id) from trips
     where space_id = {space_id}
     and pattern_id = '{pattern_id}'
     and id = '{trip_id}'
     """
     c1 = dbconnect.makeQuery(s1, output='oneValue')
 
-    s2 = f"""select count(*) from stop_times
+    s2 = f"""select count(id) from stop_times
     where space_id = {space_id}
     and trip_id = '{trip_id}'
     """

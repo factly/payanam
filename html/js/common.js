@@ -451,6 +451,12 @@ function loadURLParams(URLParams) {
     }
 }
 
+
+function getTodayDate() {
+    let d = new Date();
+    return d.toISOString().split('T')[0];
+}
+
 // #########################
 // GRAYEYARD
 
@@ -470,3 +476,4 @@ function keyCheck() {
 
 }
 */
+

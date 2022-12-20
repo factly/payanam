@@ -657,7 +657,7 @@ function resetEverything() {
     $('#reconcileStatus').html(``);
     // MBlight.addTo(map);
     map.flyTo(STARTLOCATION,STARTZOOM);
-    mapStops();
+    loadUniqueStops();
 }
 
 function drawLine(folder,jsonFile,direction_id) {
