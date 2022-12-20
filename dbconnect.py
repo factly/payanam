@@ -10,18 +10,30 @@ import commonfuncs as cf
 # Postgresql multi-threaded connection pool.
 # From https://pynative.com/psycopg2-python-postgresql-connection-pooling/#h-create-a-threaded-postgresql-connection-pool-in-python
 
-dbcreds = {
+# dbcreds = {
+#     'host': os.environ.get('DB_SERVER',''),
+#     'port': os.environ.get('DB_PORT',''),
+#     'dbname': os.environ.get('DB_DBNAME',''),
+#     'user': os.environ.get('DB_USER',''),
+#     'password': os.environ.get('DB_PW','')
+# }
+
+# 2022-12-19: adopting different db connection way from https://github.com/DavidLacroix/postgis-mvt/blob/master/webapp/app.py
+DB_PARAMETERS = {
     'host': os.environ.get('DB_SERVER',''),
-    'port': os.environ.get('DB_PORT',''),
-    'dbname': os.environ.get('DB_DBNAME',''),
+    'port': int( os.environ.get('DB_PORT','') ),
+    'database': os.environ.get('DB_DBNAME',''),
     'user': os.environ.get('DB_USER',''),
-    'password': os.environ.get('DB_PW','')
+    'password': os.environ.get('DB_PW',''),
+    'cursor_factory': extras.RealDictCursor
 }
 
-assert len(dbcreds['password']) > 2, "Invalid DB connection password" 
+assert len(DB_PARAMETERS['password']) > 2, "Invalid DB connection password" 
 
-threaded_postgreSQL_pool = psycopg2.pool.ThreadedConnectionPool(5, 20, user=dbcreds['user'],
-    password=dbcreds['password'], host=dbcreds['host'], port=dbcreds['port'], database=dbcreds['dbname'])
+threaded_postgreSQL_pool = psycopg2.pool.ThreadedConnectionPool(5, 20, **DB_PARAMETERS)
+
+# threaded_postgreSQL_pool = psycopg2.pool.ThreadedConnectionPool(5, 20, user=dbcreds['user'],
+#     password=dbcreds['password'], host=dbcreds['host'], port=dbcreds['port'], database=dbcreds['dbname'])
 
 assert threaded_postgreSQL_pool, "Could not create DB connection"
 
@@ -31,7 +43,6 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
     '''
     output choices:
     oneValue : ex: select count(*) from table1 (output will be only one value)
-    oneRow : ex: select * from table1 where id='A' (output will be onle one row)
     df: ex: select * from users (output will be a table)
     list: json array, like df.to_dict(orient='records')
     column: first column in output as a list. ex: select username from users
@@ -56,30 +67,40 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
 
     result = None # default return value
 
-    if output in ('oneValue','oneRow'):
+    if output in ('oneValue','oneJson'):
         ps_cursor = ps_connection.cursor()
         ps_cursor.execute(s1)
         row = ps_cursor.fetchone()
+        ps_cursor.close()
         if not row: 
             result = None
         else:
             if output == 'oneValue':
-                result = row[0]
+                # result = row[0]
+                result = list(row.values())[0]
             else:
-                result = row
-        ps_cursor.close()
+                result = dict(row)
+                # result = row
         
-    elif output in ('df','list','oneJson','column'):
+        
+    elif output in ('df','list','column'):
         # df
         try:
+            ps_cursor = ps_connection.cursor()
+            ps_cursor.execute(s1)
+            res = ps_cursor.fetchall()
+            ps_cursor.close()
             if fillna:
-                df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False).fillna('') 
+                df = pd.DataFrame(res).fillna('')
+                # df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False).fillna('') 
             else:
-                df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False)
+                df = pd.DataFrame(res)
+                # df = pd.read_sql_query(s1, con=ps_connection, coerce_float=False)
         except DatabaseError as e:
             cf.logmessage("DatabaseError!")
             cf.logmessage(e)
             raise
+
         # coerce_float : need to ensure mobiles aren't screwed
         
         # make all colunm headers lowercase
@@ -87,13 +108,15 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
         
         if output=='df':
             result = df
-            if (not len(df)) and (not keepCols):
-                result = []
-        elif output == 'oneJson': 
+            # if (not len(df)) and (not keepCols):
+            #     result = []
             if not len(df):
-                result = {}
-            else:
-                result = df.to_dict(orient='records')[0]
+                result = []
+        # elif output == 'oneJson': 
+        #     if not len(df):
+        #         result = {}
+        #     else:
+        #         result = df.to_dict(orient='records')[0]
 
         elif (not len(df)): 
             result = []
@@ -107,8 +130,13 @@ def makeQuery(s1, output='df', lowerCaseColumns=False, keepCols=False, fillna=Tr
     else:
         cf.logmessage('invalid output type')
     
-    threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
-    return result
+    try:
+        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+    except DatabaseError as e:
+            cf.logmessage("DatabaseError when returning threaded connection back to pool")
+            cf.logmessage(e)
+    finally:
+        return result
 
 
 def execSQL(s1, noprint=False):
@@ -124,16 +152,46 @@ def execSQL(s1, noprint=False):
     return affected
 
 
-def getColumnsList(tablename, engine):
-    statement1 = f"""
-    SELECT COLUMN_NAME
-    FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = N'{tablename}'
-    """
-    # sql = db.text(statement1)
-    df = pd.read_sql_query(statement1,con=engine)
-    # return df['COLUMN_NAME'].str.lower().to_list()
-    return df['column_name'].to_list()
+# def getColumnsList(tablename, engine):
+#     statement1 = f"""
+#     SELECT COLUMN_NAME
+#     FROM INFORMATION_SCHEMA.COLUMNS
+#     WHERE TABLE_NAME = N'{tablename}'
+#     """
+#     # sql = db.text(statement1)
+#     df = pd.read_sql_query(statement1,con=engine)
+#     # return df['COLUMN_NAME'].str.lower().to_list()
+#     return df['column_name'].to_list()
+
+
+
+# def OLD_addTable(df, tablename, lowerCaseColumns=False):
+#     ps_connection = threaded_postgreSQL_pool.getconn()
+
+#     table_cols = getColumnsList(tablename,ps_connection)
+#     if lowerCaseColumns:
+#         df.columns = [x.lower() for x in df.columns] # make lowercase
+#     sending_cols = [x for x in table_cols if x in df.columns]
+#     discarded_cols = set(df.columns.to_list()) - set(table_cols)
+#     if len(discarded_cols): cf.logmessage("Dropping {} cols from uploaded data as they're not in the DB: {}".format(len(discarded_cols),', '.join(discarded_cols)))
+    
+#     # ensure only those values go to DB table that have columns there
+#     # cf.logmessage("Adding {} rows into {} with these columns: {}".format(len(df), tablename, sending_cols))
+#     CHUNKSIZE = int(os.environ.get('CHUNKSIZE',1))
+#     try:
+#         df[sending_cols].to_sql(name=tablename, con=ps_connection, chunksize=CHUNKSIZE, if_exists='append', index=False )
+#         threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+
+#     except IntegrityError as e:
+#         cf.logmessage(e)
+#         threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+#         return False
+#     except:
+#         threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
+#         raise
+#         return False
+
+#     return True
 
 
 def addRow(params,tablename):
@@ -141,40 +199,11 @@ def addRow(params,tablename):
     return addTable(df, tablename) # heck
 
 
-def OLD_addTable(df, tablename, lowerCaseColumns=False):
-    ps_connection = threaded_postgreSQL_pool.getconn()
-
-    table_cols = getColumnsList(tablename,ps_connection)
-    if lowerCaseColumns:
-        df.columns = [x.lower() for x in df.columns] # make lowercase
-    sending_cols = [x for x in table_cols if x in df.columns]
-    discarded_cols = set(df.columns.to_list()) - set(table_cols)
-    if len(discarded_cols): cf.logmessage("Dropping {} cols from uploaded data as they're not in the DB: {}".format(len(discarded_cols),', '.join(discarded_cols)))
-    
-    # ensure only those values go to DB table that have columns there
-    # cf.logmessage("Adding {} rows into {} with these columns: {}".format(len(df), tablename, sending_cols))
-    CHUNKSIZE = int(os.environ.get('CHUNKSIZE',1))
-    try:
-        df[sending_cols].to_sql(name=tablename, con=ps_connection, chunksize=CHUNKSIZE, if_exists='append', index=False )
-        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
-
-    except IntegrityError as e:
-        cf.logmessage(e)
-        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
-        return False
-    except:
-        threaded_postgreSQL_pool.putconn(ps_connection) # return threaded connnection back to pool
-        raise
-        return False
-
-    return True
-
-
-
 def addTable(df, table):
     """
     From https://naysan.ca/2020/05/09/pandas-to-postgresql-using-psycopg2-bulk-insert-performance-benchmark/
     Using psycopg2.extras.execute_values() to insert the dataframe
+    https://www.psycopg.org/docs/extras.html#fast-exec
     """
     # Create a list of tupples from the dataframe values
     tuples = [tuple(x) for x in df.to_numpy()]

@@ -224,7 +224,7 @@ def loadPattern(req: loadPattern_payload):
     and t1.pattern_id = '{req.pattern_id}'
     order by t1.stop_sequence
     """
-    df1 = dbconnect.makeQuery(s1, output='df', keepCols=True)
+    df1 = dbconnect.makeQuery(s1, output='df')
     returnD['pattern_id'] = req.pattern_id
     returnD['pattern_stops'] = []
     returnD['id_stopId_lookup'] = {}

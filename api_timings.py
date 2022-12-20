@@ -33,8 +33,11 @@ def loadTimings(req: loadTimings_payload):
     and t1.pattern_id = '{pattern_id}'
     order by t1.stop_sequence
     """
-    df1 = dbconnect.makeQuery(s1, output='df', keepCols=True, fillna=True)
-    returnD['stops'] = df1.to_dict(orient='records')
+    df1 = dbconnect.makeQuery(s1, output='df')
+    if len(df1):
+        returnD['stops'] = df1.to_dict(orient='records')
+    else:
+        returnD['stops'] = []
 
     # trips
 
@@ -48,10 +51,13 @@ def loadTimings(req: loadTimings_payload):
     # TO DO: Pagination of trips if too many
     # offset {(req.page-1)*10}
     # fetch first 10 rows only
-    df2 = dbconnect.makeQuery(s2, output='df', keepCols=True, fillna=True)
-    df2['start_time'] = df2['start_time'].apply(lambda x: str(x)[:5])
+    df2 = dbconnect.makeQuery(s2, output='df')
 
-    returnD['trips'] = df2.to_dict(orient='records')
+    if len(df2):
+        df2['start_time'] = df2['start_time'].apply(lambda x: str(x)[:5])
+        returnD['trips'] = df2.to_dict(orient='records')
+    else:
+        returnD['trips'] = []
 
     # fetch full count of trips if first page request.
     # but if we got under 10 in pg1 itself then no need to query DB again.
@@ -74,26 +80,34 @@ def loadTimings(req: loadTimings_payload):
         and trip_id in ({trip_idSQL})
         order by trip_id, stop_sequence
         """
-        df3 = dbconnect.makeQuery(s3, output='df', keepCols=True, fillna=True)
+        df3 = dbconnect.makeQuery(s3, output='df', fillna=True)
         # df3['trip_id'] = df3['trip_id'].apply(lambda x: f"trip_{x}")
-        df3['arrival_time'] = df3['arrival_time'].apply(lambda x: str(x)[:5])
+        if len(df3):
+            df3['arrival_time'] = df3['arrival_time'].apply(lambda x: str(x)[:5])
 
     else:
         df3 = pd.DataFrame(columns=['trip_id', 'stop_sequence', 'arrival_time'])
     
     
-    # pivot by trip_id
-    df4 = df3.pivot(index='stop_sequence', columns='trip_id', values='arrival_time').fillna('').reset_index()
+    if len(df1):
+        if len(df3):
+            # pivot by trip_id
+            df4 = df3.pivot(index='stop_sequence', columns='trip_id', values='arrival_time').fillna('').reset_index()
 
-    # merge in stop ids, names
-    df5 = pd.merge(df1, df4, on='stop_sequence', how='left')
+            # merge in stop ids, names
+            df5 = pd.merge(df1, df4, on='stop_sequence', how='left')
+        else:
+            df5 = df1
 
-    # sort by start timings
-    allCols = list(df5.columns)
-    tripCols = [x for x in allCols if x not in ('stop_sequence', 'stop_id', 'name')]
-    newCols = ['stop_sequence', 'stop_id', 'name'] + sorted(tripCols)
+        # sort by start timings
+        allCols = list(df5.columns)
+        tripCols = [x for x in allCols if x not in ('stop_sequence', 'stop_id', 'name')]
+        newCols = ['stop_sequence', 'stop_id', 'name'] + sorted(tripCols)
 
-    returnD['stop_times'] = df5[newCols].to_dict(orient='records')
+        returnD['stop_times'] = df5[newCols].to_dict(orient='records')
+
+    else:
+        returnD['stop_times'] = []
     
     # TO DO: calc stop times offset from first trip or so
 
@@ -274,7 +288,7 @@ def updateTimingsForPattern(pattern_id, pattern_length):
     and t2.space_id = {space_id}
     order by t2.trip_id, t2.stop_sequence
     """
-    df_exist_all = dbconnect.makeQuery(s1, output='df', keepCols=True)
+    df_exist_all = dbconnect.makeQuery(s1, output='df')
     # tripsList = dbconnect.makeQuery(s1, output='column')
 
     if not len(df_exist_all):
@@ -299,7 +313,7 @@ def updateTimingsForPattern(pattern_id, pattern_length):
         # and trip_id = '{trip_id}'
         # order by stop_sequence
         # """
-        # df_exist = dbconnect.makeQuery(s1, output='df', keepCols=True)
+        # df_exist = dbconnect.makeQuery(s1, output='df')
         
         if len(df_exist) == pattern_length:
             # no change needed!

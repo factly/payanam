@@ -63,8 +63,12 @@ def saveConfig(req: saveConfig_payload):
     # fetch existing configs
     s1 = f"""select config_key, config_value, id from config
     where space_id = {space_id}"""
-    dfold = dbconnect.makeQuery(s1, output='df', fillna=True, keepCols=True).set_index('config_key')
-    oldConfigs = dfold.to_dict(orient='index')
+    dfold = dbconnect.makeQuery(s1, output='df', fillna=True)
+    if len(dfold): 
+        dfold.set_index('config_key', inplace=True)
+        oldConfigs = dfold.to_dict(orient='index')
+    else:
+        oldConfigs = {}
 
     print(oldConfigs)
     print(dfnew)
