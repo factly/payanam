@@ -189,6 +189,7 @@ def getRouteShapes(route_id: str, precision: Optional[int]=6):
     s1 = f"""
     select t1.id as route_id, t1.name as route_name,
     t2.id as pattern_id, t2.name as pattern_name,
+    count(Q.stop_sequence) AS mapped_stops,
     ST_AsEncodedPolyline(ST_MakeLine(Q.geopoint::geometry ORDER BY Q.stop_sequence), {precision}) AS geoline
     from routes as t1
     left join patterns as t2
@@ -207,4 +208,3 @@ def getRouteShapes(route_id: str, precision: Optional[int]=6):
 
     returnD['patterns'] = dbconnect.makeQuery(s1, output="list")
     return returnD
-    
