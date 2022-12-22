@@ -32,8 +32,8 @@ var routes_tabulator = new Tabulator("#routes", {
     selectable:1,
     layout:"fitDataFill",
     //responsiveLayout:"collapse",
+	addRowPos: "top",
 	tooltipsHeader:true,
-    index: "route_id",
     columns:[
         {title:"sr", field:"sr", headerFilter:"input", headerTooltip:"serial number", width:15, headerSort:true, frozen:true },
         {title:"depot", field:"depot", headerFilter:"input", headerTooltip:"depot", width:75, headerSort:true },
@@ -41,9 +41,16 @@ var routes_tabulator = new Tabulator("#routes", {
         {title:"Mapped %", field:"mapped%total", headerFilter:"input", headerTooltip:"mapped%total", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar },
 
         // icon : jump to routeMap.html with URL params
-        {title: "Edit", formatter:editIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
-            let route_id = cell.getRow().getData()['route_id'];
-            var win = window.open(`routes.html?route=${route_id}`, '_blank');
+        {title: "Map Route", formatter:routeMapperIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
+            let row = cell.getRow().getData();
+            let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
+            var win = window.open(`routeMap.html?route=${jumpRoute}`, '_blank');
+            win.focus();
+        }},
+        {title: "Edit Timings", formatter:clockIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
+            let row = cell.getRow().getData();
+            let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
+            var win = window.open(`timings.html?route=${jumpRoute}`, '_blank');
             win.focus();
         }},
         {title:"Number<br>of Stops", field:"len", headerFilter:"input", headerTooltip:"number of stops (both directions)", width:55, headerSort:true,headerVertical:true },

@@ -225,13 +225,16 @@ function topMenu() {
   <div class="navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav mr-auto">
       <li class="nav-item">
-      <a class="nav-link" href="stops.html">Stops</a>
+          <a class="nav-link" href="index.html">Overview</a>
       </li>
       <li class="nav-item">
-      <a class="nav-link" href="routes.html">Routes</a>
+          <a class="nav-link" href="stops.html">Stops</a>
       </li>
       <li class="nav-item">
-      <a class="nav-link" href="reconciliation.html">Combine Stops</a>
+          <a class="nav-link" href="routes.html">Routes</a>
+      </li>
+      <li class="nav-item">
+          <a class="nav-link" href="reconciliation.html">Combine Stops</a>
       </li>
       
       
