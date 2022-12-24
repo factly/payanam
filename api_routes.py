@@ -253,14 +253,15 @@ def getRouteShapes():
         row['num_patterns'] = len(x)
         row['num_stops'] = x['all_stops'].sum()
         row['num_trips'] = x['num_trips'].sum()
-        row['mapped%'] = round(100*x['mapped_stops'].sum()/x['all_stops'].sum(),1)
+        row['mapped_pc'] = round(100*x['mapped_stops'].sum()/x['all_stops'].sum(),1)
         row['hull_sum'] = round(x['hull'].sum(),1)
         row['patterns'] = ','.join(x['pattern_name'].tolist())
         row['pattern_ids'] = ','.join(x['pattern_id'].tolist())
         return pd.Series(row)
 
-    df2 = df1.groupby(['depot','route_id','route_name']).apply(grouper1).reset_index(drop=False).sort_values(['depot','route_name'])
-
-    returnD['routes_stats'] = df2.to_csv(index=False)
+    df2 = df1.groupby(['depot','route_id','route_name']).apply(grouper1).reset_index(drop=False).sort_values(['depot','route_name']).reset_index(drop=True)
+    df2.index += 1
+    df2.index.name = 'sr'
+    returnD['routes_stats'] = df2.to_csv(index=True)
 
     return returnD
