@@ -1249,7 +1249,7 @@ function loadSuggestions() {
     let bounds = map.getBounds();
     let payload = {
         "name": globalSelectedStop.name,
-        "minLat": roundFloor(roundFloor(bounds._southWest.lat)),
+        "minLat": roundFloor(bounds._southWest.lat),
         "maxLat": roundCeil(bounds._northEast.lat), 
         "minLon": roundFloor(bounds._southWest.lng), 
         "maxLon": roundCeil(bounds._northEast.lng)
