@@ -60,7 +60,7 @@ def loadStops(req: loadStops_payload):
     # drop-in replace lat, lon with gis conv
     cols = cols.replace('latitude', 'ST_Y(geopoint::geometry) as latitude').replace('longitude','ST_X(geopoint::geometry) as longitude')
     
-    s1 = f"select {cols} from stops_master where space_id = {space_id}"
+    s1 = f"select {cols} from stops_master where space_id = {space_id} order by zap"
     df = dbconnect.makeQuery(s1, output='df', fillna=False)
     
     returnD = { 'message': "success"}

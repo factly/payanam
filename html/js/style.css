@@ -132,3 +132,16 @@ body {
     overflow-y: scroll;
 }
 
+.idTag {
+    font-size: 0.7em;
+    background-color: #ffd280;
+}
+
+.unmapped, #unmappedHolder {
+    color:  red;
+}
+
+.unmapped {
+    font-size: 0.7em;
+}
+

@@ -39,13 +39,17 @@ def suggestMatches(req: suggestMatches_payload):
     space_id = int(os.environ.get('SPACE_ID',1))
     stop_name_zap = cf.zapper(req.name)
 
+    bboxWKT = cf.makeBboxPoly(req.minLat, req.maxLat, req.minLon, req.maxLon)
+    
     s1 = f"""select id, zap, name, 
     ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
     from stops_master
     where space_id = {space_id}
-    and latitude between {req.minLat} and {req.maxLat}
-    and longitude between {req.minLon} and {req.maxLon}
+    and ST_Within(geopoint::geometry, ST_GeomFromText('{bboxWKT}', 4326))
     """
+    # and latitude between {req.minLat} and {req.maxLat}
+    # and longitude between {req.minLon} and {req.maxLon}
+    
     dfMapped = dbconnect.makeQuery(s1, output='df')
 
     if req.orig_id:
@@ -109,14 +113,14 @@ def autoMapPattern(req: autoMapPattern_payload):
     space_id = int(os.environ.get('SPACE_ID',1))
     returnD = { "message": "success"}
 
-    # fetch all the unmapped stop names
+    # fetch all the unmapped stop names from the pattern
     s1 = f"""select t1.id, t1.stop_sequence, t1.stop_id, 
     t2.name, t2.zap
     from pattern_stops as t1
     left join stops_master as t2
     on t1.stop_id = t2.id
     where t1.pattern_id = '{req.pattern_id}'
-    and t2.latitude is NULL
+    and t2.geopoint is NULL
     and t1.space_id = {space_id}
     order by t1.stop_sequence
     """
@@ -130,12 +134,13 @@ def autoMapPattern(req: autoMapPattern_payload):
     else:
         returnD['noneed'] = False
 
+    bboxWKT = cf.makeBboxPoly(req.minLat, req.maxLat, req.minLon, req.maxLon)
+    
     s1 = f"""select id as stop_id, zap, name, 
     ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
     from stops_master
     where space_id = {space_id}
-    and latitude between {req.minLat} and {req.maxLat}
-    and longitude between {req.minLon} and {req.maxLon}
+    and ST_Within(geopoint::geometry, ST_GeomFromText('{bboxWKT}', 4326))
     """
     dfMapped = dbconnect.makeQuery(s1, output='df')
     returnD['scanned'] = len(dfMapped)

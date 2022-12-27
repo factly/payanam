@@ -235,7 +235,7 @@ function loadRoutesList() {
                 valueField: 'id',
                 optgroups: selectizeOptgroups,
                 optgroupField: 'depot',
-                searchField: ['name','depot'],
+                searchField: ['name','depot', 'id'],
                 maxItems: 1,
                 plugins: ['remove_button'], // spotted here: https://stackoverflow.com/q/51611957/4355695
                 // plugins: ['optgroup_columns', 'remove_button'],
@@ -382,7 +382,7 @@ function loadRouteDetails(route_id, pattern_id=null) {
                 let sel = ``;
                 if(pattern_id) sel = `selected="selected"`;
                 patternsContent += `<option value="${r.id}" ${sel}>${r.name}</option>`;
-                sortableContent += `<div class="list-group-item" id="${r.id}">${r.name}</div>`;
+                sortableContent += `<div class="list-group-item" id="${r.id}">${r.name} <span class="idTag">${r.id}</span></div>`;
             })
             $('#pattern_chosen').html(patternsContent)
             $('#patterns_order_holder').html(sortableContent);
@@ -702,7 +702,7 @@ function processAllStops() {
             unmappedInd = ' (unmapped)';
         }
 
-        selectContent += `<option value="${e.id}">${e.name.substring(0,50)} (${e.id})${unmappedInd}</option>`;
+        selectContent += `<option value="${e.id}">${truncateString(e.name)} (${e.id})${unmappedInd}</option>`;
 
     });
     if (!map.hasLayer(allStopsLayer)) map.addLayer(allStopsLayer);
@@ -794,7 +794,7 @@ function makeStopDiv(stop_id, name, id) {
 
     let sortableContent = `<div class="list-group-item stop_${stop_id} pattern_stop_${id}" data-id="${id}" title="${name}">
     <div onclick="clickPatternStop('${id}')"><span class="stopNum ${id}"></span>. ${printname} 
-    <small>${stop_id}<span class="unmapped ${stop_id}"></span></small></div>
+    <span class="idTag">${stop_id}</span><span class="unmapped ${stop_id}"></span></div>
         
        
         <div class="removeStopButton" onclick="removeStop('${id}')">x</div>
@@ -1249,10 +1249,10 @@ function loadSuggestions() {
     let bounds = map.getBounds();
     let payload = {
         "name": globalSelectedStop.name,
-        "minLat": bounds._southWest.lat, 
-        "maxLat": bounds._northEast.lat, 
-        "minLon": bounds._southWest.lng, 
-        "maxLon": bounds._northEast.lng
+        "minLat": roundFloor(roundFloor(bounds._southWest.lat)),
+        "maxLat": roundCeil(bounds._northEast.lat), 
+        "minLon": roundFloor(bounds._southWest.lng), 
+        "maxLon": roundCeil(bounds._northEast.lng)
         // "fuzzy": true,
         // "accuracy": 0.7,
         // "maxRows": 10
@@ -1346,10 +1346,10 @@ function autoMapPattern() {
     let payload = {
         "pattern_id": pid,
         "autoMap": true,
-        "minLat": bounds._southWest.lat, 
-        "maxLat": bounds._northEast.lat, 
-        "minLon": bounds._southWest.lng, 
-        "maxLon": bounds._northEast.lng
+        "minLat": roundFloor(bounds._southWest.lat), 
+        "maxLat": roundCeil(bounds._northEast.lat), 
+        "minLon": roundFloor(bounds._southWest.lng), 
+        "maxLon": roundCeil(bounds._northEast.lng)
     };
     $('#autoMapPattern_status').html(`Processing, please wait a few secs...`);
     $.ajax({

@@ -79,9 +79,7 @@ width: 100%;
     overflow-y: scroll;
 }
 
-.unmapped, #unmappedHolder {
-    color:  red;
-}
+
 
 #stopInfo {
     font-size: 1.3em;
@@ -206,7 +204,11 @@ width: 100%;
             <div class="col-md-6">
                 <p><button class="btn btn-sm btn-warning" onclick="autoMapPattern()">Automap</button> unmapped stops for this pattern<br><span id="autoMapPattern_status"></span></p>
             </div>
-            <div class="col-md-6"></div>
+            <div class="col-md-6">Open map in: 
+                <big><a href="javascript:{}" onclick="openExternalMap('g')" class="badge badge-primary">Gmaps</a>&nbsp; 
+                <a href="javascript:{}" onclick="openExternalMap('m')" class="badge badge-primary">Mapillary</a>&nbsp;
+                </big>
+            </div>
         </div>
     </div>
 
