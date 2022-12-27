@@ -201,10 +201,67 @@ def getRouteShapes(route_id: str, precision: Optional[int]=6):
         where t4.geopoint is not null
         order by t3.stop_sequence
         ) as Q
+    inner join ( select pattern_id, count(id) as total_stops from pattern_stops group by pattern_id) as t5
+    on t2.id = t5.pattern_id
     on t2.id = Q.pattern_id
     where t1.id = '{route_id}'
     group by t1.id, t2.id
     """
 
     returnD['patterns'] = dbconnect.makeQuery(s1, output="list")
+    return returnD
+
+
+@app.get("/API/routesOverview", tags=["routes"])
+def getRouteShapes():
+    cf.logmessage("routesOverview api call")
+    returnD = { "message": "success"}
+    s1 = """
+    select t1.depot, t1.id as route_id, t1.name as route_name,
+    t2.id as pattern_id, t2.name as pattern_name,
+    t3.all_stops, t4.mapped_stops, t4.hull, 
+    t7.num_trips
+    
+    from routes as t1
+    
+    left join patterns as t2
+    on t1.id = t2.route_id
+    
+    inner join (select pattern_id, count(id) as all_stops from pattern_stops group by pattern_id) as t3
+    on t2.id = t3.pattern_id
+    
+    inner join (
+        select t5.pattern_id, count(t5.id) as mapped_stops,
+        ST_Area(ST_ConvexHull(ST_Collect(t6.geopoint::geometry))::geography, false)/1000000 as hull
+        from pattern_stops as t5
+        left join stops_master as t6
+        on t5.stop_id = t6.id
+        where t6.geopoint is not null 
+        group by t5.pattern_id) as t4
+    on t2.id = t4.pattern_id
+    
+    inner join (select t8.pattern_id, count(t8.id) as num_trips from trips as t8 group by t8.pattern_id) as t7
+    on t2.id = t7.pattern_id
+    """
+    df1 = dbconnect.makeQuery(s1, output='df')
+    if not len(df1):
+        returnD['data'] = None
+        return returnD
+
+    def grouper1(x):
+        row = {}
+        row['num_patterns'] = len(x)
+        row['num_stops'] = x['all_stops'].sum()
+        row['num_trips'] = x['num_trips'].sum()
+        row['mapped_pc'] = round(100*x['mapped_stops'].sum()/x['all_stops'].sum(),1)
+        row['hull_sum'] = round(x['hull'].sum(),1)
+        row['patterns'] = ','.join(x['pattern_name'].tolist())
+        row['pattern_ids'] = ','.join(x['pattern_id'].tolist())
+        return pd.Series(row)
+
+    df2 = df1.groupby(['depot','route_id','route_name']).apply(grouper1).reset_index(drop=False).sort_values(['depot','route_name']).reset_index(drop=True)
+    df2.index += 1
+    df2.index.name = 'sr'
+    returnD['routes_stats'] = df2.to_csv(index=True)
+
     return returnD

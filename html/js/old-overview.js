@@ -4,9 +4,8 @@
 // ######################################
 /* 1. GLOBAL VARIABLES */
 const routes_height = "500px";
-var URLParams = {}; // for holding URL parameters
 
-var patternLayer = new L.geoJson(null);
+var lineLayer = new L.geoJson(null);
 
 // #################################
 /* 2. Initiate tabulators */
@@ -33,31 +32,44 @@ var routes_tabulator = new Tabulator("#routes", {
     selectable:1,
     layout:"fitDataFill",
     //responsiveLayout:"collapse",
+	addRowPos: "top",
 	tooltipsHeader:true,
-    index: "route_id",
     columns:[
         {title:"sr", field:"sr", headerFilter:"input", headerTooltip:"serial number", width:15, headerSort:true, frozen:true },
         {title:"depot", field:"depot", headerFilter:"input", headerTooltip:"depot", width:75, headerSort:true },
-        {title:"route<br>Name", field:"route_name", headerFilter:"input", headerTooltip:"routeName", width:100, headerSort:true, headerVertical:false, bottomCalc:routesTotal },
-        {title:"Mapped %", field:"mapped_pc", headerFilter:"input", headerTooltip:"mapped %", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar },
+        {title:"route<br>Name", field:"routeName", headerFilter:"input", headerTooltip:"routeName", width:100, headerSort:true, headerVertical:false, bottomCalc:routesTotal },
+        {title:"Mapped %", field:"mapped%total", headerFilter:"input", headerTooltip:"mapped%total", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar },
 
         // icon : jump to routeMap.html with URL params
-        {title: "Edit", formatter:editIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
-            let route_id = cell.getRow().getData()['route_id'];
-            var win = window.open(`routes.html?route=${route_id}`, '_blank');
+        {title: "Map Route", formatter:routeMapperIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
+            let row = cell.getRow().getData();
+            let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
+            var win = window.open(`routeMap.html?route=${jumpRoute}`, '_blank');
             win.focus();
         }},
-        {title:"Stops", field:"num_stops", headerFilter:"input", headerTooltip:"number of stops (both directions)", width:55, headerSort:true,headerVertical:true },
+        {title: "Edit Timings", formatter:clockIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
+            let row = cell.getRow().getData();
+            let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
+            var win = window.open(`timings.html?route=${jumpRoute}`, '_blank');
+            win.focus();
+        }},
+        {title:"Number<br>of Stops", field:"len", headerFilter:"input", headerTooltip:"number of stops (both directions)", width:55, headerSort:true,headerVertical:true },
         //{title:"trip times", field:"timings", headerTooltip:"if route has trips", width:50, headerSort:false, headerVertical:true, formatter:"tickCross", formatterParams:{crossElement:false} },
-        // {title:"Trips", field:"num_trips", headerTooltip:"trips", width:50, headerSort:true, headerVertical:true, formatter:tickIcon },
-        {title:"Trips", field:"num_trips", headerTooltip:"trips", width:50, headerSort:true, headerVertical:true },
-        // {title: "Print", formatter:printIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
-        //     let row = cell.getRow().getData();
-        //     let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
-        //     var win = window.open(`print.html?route=${jumpRoute}`, '_blank');
-        //     win.focus();
-        // }},
-        // {title:"services", field:"service", headerFilter:"input", headerTooltip:"services", width:100, headerSort:true },
+        {title:"Trip Times", field:"timings", headerTooltip:"if route has trips", width:50, headerSort:true, headerVertical:true, formatter:tickIcon },
+        {title:"Frequency", field:"frequency", headerTooltip:"if route has frequency", width:50, headerSort:true, headerVertical:true,formatter:tickIcon },
+        {title: "Edit Route", formatter:editIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
+            let row = cell.getRow().getData();
+            let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
+            var win = window.open(`routeEntry.html?route=${jumpRoute}`, '_blank');
+            win.focus();
+        }},
+        {title: "Print", formatter:printIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
+            let row = cell.getRow().getData();
+            let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
+            var win = window.open(`print.html?route=${jumpRoute}`, '_blank');
+            win.focus();
+        }},
+        {title:"services", field:"service", headerFilter:"input", headerTooltip:"services", width:100, headerSort:true },
         // {title:"avg confidence", field:"avgConfidence", headerFilter:"input", headerTooltip:"avg confidence", width:70, headerSort:true, headerVertical:true },
         // {title:"% autoMapped", field:"autoMapped%", headerFilter:"input", headerTooltip:"autoMapped%", width:70, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar },
         //{title:"% manually", field:"manuallyMapped%", headerFilter:"input", headerTooltip:"manuallyMapped%", width:70, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar },
@@ -75,50 +87,25 @@ var routes_tabulator = new Tabulator("#routes", {
 
 // ########################
 // LEAFLET MAP
-var cartoPositron = L.tileLayer.provider('CartoDB.Positron');
-var OSM = L.tileLayer.provider('OpenStreetMap.Mapnik');
+var MBlight = L.tileLayer.provider('MapBox', {id: 'nikhilsheth.m0mmobne', accessToken: MBaccessToken });
 var gStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']});
-var gHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3']});
-var esriWorld = L.tileLayer.provider('Esri.WorldImagery');
-var baseLayers = { 
-    "OpenStreetMap.org" : OSM, 
-    "Carto Positron": cartoPositron, 
-    "ESRI Satellite": esriWorld,
-    "gStreets": gStreets, 
-    "gHybrid": gHybrid
-};
 
 var map = new L.Map('map', {
-    center: STARTLOCATION,
-    zoom: STARTZOOM,
-    layers: [cartoPositron],
-    scrollWheelZoom: true,
-    maxZoom: 20,
-    // contextmenu: true,
-    // contextmenuWidth: 140,
-    // contextmenuItems: [
-    //     { text: 'Add a new Stop here', callback: route_newStop_popup },
-    //     { text: 'Map an unmapped Stop here', callback: route_unMappedStop_popup }
-    // ]
+	center: STARTLOCATION,
+	zoom: 10,
+	layers: [gStreets],
+	scrollWheelZoom: true,
+    maxZoom: 20
 });
 
 $('.leaflet-container').css('cursor','crosshair'); // from https://stackoverflow.com/a/28724847/4355695 Changing mouse cursor to crosshairs
-L.control.scale({metric:true, imperial:false, position: "bottomright"}).addTo(map);
-
-// layers
-var overlays = {
-    "Route patterns": patternLayer
-};
-var layerControl = L.control.layers(baseLayers, overlays, {collapsed: true, autoZIndex:false}).addTo(map); 
-
-
 // SVG renderer
 var myRenderer = L.canvas({ padding: 0.5 });
 map.addControl(new L.Control.Fullscreen({position:'topright'}));
 
 L.easyButton('<img src="lib/zoom-out.svg" width="100%" title="zoom to fit" data-toggle="tooltip" data-placement="right">', function(btn, map){
     if( lineLayer.getLayers().length )
-		map.fitBounds(patternLayer.getBounds(), {padding:[0,0], maxZoom:15});
+		map.fitBounds(lineLayer.getBounds(), {padding:[0,0], maxZoom:15});
 }).addTo(map);
 
 // Leaflet.Control.Custom : add custom HTML elements
@@ -133,78 +120,73 @@ L.control.custom({
 // ########################
 // RUN ON PAGE LOAD
 $(document).ready(function() {
-    loadURLParams(URLParams);
-    loadConfig();
-
-    routesOverview();
-
-    // loadDefaults();
-    // loadRoutes();
+    loadDefaults();
+    loadRoutes();
 
     // ###########
     // Listeners for the checkboxes, to toggle columns on or off in tabulator table
-    // $('#autoMapped').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"% Auto-<br>Mapped", field:"autoMapped%", headerFilter:"input", headerTooltip:"autoMapped%", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("autoMapped%"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#autoMapped').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"% Auto-<br>Mapped", field:"autoMapped%", headerFilter:"input", headerTooltip:"autoMapped%", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("autoMapped%"); // use the field, luke, use the field!
+        }
+    });
 
-    // $('#manuallyMapped').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"% Manually<br>Mapped", field:"manuallyMapped%", headerFilter:"input", headerTooltip:"manuallyMapped%", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("manuallyMapped%"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#manuallyMapped').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"% Manually<br>Mapped", field:"manuallyMapped%", headerFilter:"input", headerTooltip:"manuallyMapped%", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("manuallyMapped%"); // use the field, luke, use the field!
+        }
+    });
 
-    // $('#hull').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"Convex<br> &nbsp; Hull", field:"hull", headerFilter:"input", headerTooltip:"higher number indicates there may be mis-mapped stops in the route", width:50, headerSort:true, headerVertical:true };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("hull"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#hull').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"Convex<br> &nbsp; Hull", field:"hull", headerFilter:"input", headerTooltip:"higher number indicates there may be mis-mapped stops in the route", width:50, headerSort:true, headerVertical:true };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("hull"); // use the field, luke, use the field!
+        }
+    });
 
-    // $('#filename').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"filename", field:"jsonFile", headerFilter:"input", headerTooltip:"jsonFile", width:120, headerSort:true };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("jsonFile"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#filename').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"filename", field:"jsonFile", headerFilter:"input", headerTooltip:"jsonFile", width:120, headerSort:true };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("jsonFile"); // use the field, luke, use the field!
+        }
+    });
 
-    // $('#busType').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"Bus<br>Type", field:"busType", headerFilter:"input", headerTooltip:"busType", width:80, headerSort:true, headerVertical:false };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("busType"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#busType').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"Bus<br>Type", field:"busType", headerFilter:"input", headerTooltip:"busType", width:80, headerSort:true, headerVertical:false };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("busType"); // use the field, luke, use the field!
+        }
+    });
 
-    // $('#onwardMapped').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"Onward %<br>Mapped", field:"mapped%0", headerFilter:"input", headerTooltip:"Onward journey % mapped", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("mapped%0"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#onwardMapped').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"Onward %<br>Mapped", field:"mapped%0", headerFilter:"input", headerTooltip:"Onward journey % mapped", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("mapped%0"); // use the field, luke, use the field!
+        }
+    });
 
-    // $('#returnMapped').on('change', e => {
-    //     if(e.target.checked) {
-    //         let col = {title:"Return %<br>Mapped", field:"mapped%1", headerFilter:"input", headerTooltip:"Return journey % mapped", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
-    //         routes_tabulator.addColumn(col, false);
-    //     } else {
-    //         routes_tabulator.deleteColumn("mapped%1"); // use the field, luke, use the field!
-    //     }
-    // });
+    $('#returnMapped').on('change', e => {
+        if(e.target.checked) {
+            let col = {title:"Return %<br>Mapped", field:"mapped%1", headerFilter:"input", headerTooltip:"Return journey % mapped", width:50, headerSort:true, headerVertical:true, formatter:"progress", formatterParams: progressbar };
+            routes_tabulator.addColumn(col, false);
+        } else {
+            routes_tabulator.deleteColumn("mapped%1"); // use the field, luke, use the field!
+        }
+    });
 
 
 });
@@ -212,29 +194,6 @@ $(document).ready(function() {
 
 //#####################################
 // API Call functions
-
-function routesOverview() {
-    $('#status').html(`Loading routes...`);
-    let payload = {};
-    $.ajax({
-        url: `/API/routesOverview`,
-        type: "GET",
-        // data : JSON.stringify(payload),
-        cache: false,
-        contentType: 'application/json',
-        success: function (returndata) {
-            let tableData = Papa.parse(returndata.routes_stats, {header:true, skipEmptyLines:true, dynamicTyping:true}).data;
-            console.log(tableData);
-            routes_tabulator.setData(tableData);
-        },
-        error: function (jqXHR, exception) {
-            console.log("error:" + jqXHR.responseText);
-            $('#status').html(jqXHR.responseText);
-        }
-    });
-
-}
-
 function drawLine(folder,jsonFile,direction_id="0") {
     console.log("Fetching route:",folder,jsonFile,direction_id);
     $('#mapStatus').html('Loading..');

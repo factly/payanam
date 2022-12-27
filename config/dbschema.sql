@@ -24,6 +24,7 @@ CREATE TABLE routes(
     services TEXT NULL,
     route_group_id VARCHAR(10) NULL
 );
+CREATE INDEX routes_i1 ON routes (space_id);
 
 
 DROP TABLE IF EXISTS patterns;
@@ -44,6 +45,8 @@ CREATE TABLE patterns(
     modified_by VARCHAR(100) NULL,
     CONSTRAINT patterns_c1 UNIQUE (route_id, sequence)
 );
+CREATE INDEX patterns_i1 ON patterns (space_id, route_id);
+
 
 
 DROP TABLE IF EXISTS pattern_stops;
@@ -56,6 +59,8 @@ CREATE TABLE pattern_stops(
     time_offset INT NULL,
     CONSTRAINT pattern_stops_c1 UNIQUE (id, stop_sequence)
 );
+CREATE INDEX pattern_stops_i1 ON pattern_stops (space_id, pattern_id);
+CREATE INDEX pattern_stops_i2 ON pattern_stops (space_id, pattern_id, stop_sequence);
 
 
 
@@ -73,6 +78,8 @@ CREATE TABLE trips(
     last_updated TIMESTAMP(0) NULL,
     modified_by VARCHAR(100) NULL
 );
+CREATE INDEX trips_i1 ON trips (space_id, pattern_id);
+
 
 
 DROP TABLE IF EXISTS stop_times;
@@ -85,6 +92,8 @@ CREATE TABLE stop_times(
     departure_time VARCHAR(8) NULL,
     timepoint BOOLEAN NULL
 );
+CREATE INDEX stop_times_i1 ON stop_times (space_id, trip_id, stop_sequence);
+
 
 
 DROP TABLE IF EXISTS services;
@@ -110,13 +119,9 @@ CREATE TABLE stops_master(
     created_by VARCHAR(100) NULL,
     last_updated TIMESTAMP(0) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     modified_by VARCHAR(100) NULL,
-    CONSTRAINT stops_master2_c1 UNIQUE (space_id, geopoint)
+    CONSTRAINT stops_master_c1 UNIQUE (space_id, geopoint)
 );
 CREATE INDEX stops_master_geom1 ON stops_master USING GIST (geopoint);
-
--- 2022-12-20 : removed:
--- latitude DECIMAL(11,8) NULL,
--- longitude DECIMAL(11,8) NULL,
 
 
 DROP TABLE IF EXISTS stop_groups;
@@ -157,6 +162,7 @@ CREATE TABLE config(
     last_updated TIMESTAMP(0) NULL,
     modified_by VARCHAR(100) NULL
 );
+CREATE INDEX config_i1 ON config (space_id);
 
 
 DROP TABLE IF EXISTS tasks;
@@ -168,3 +174,4 @@ CREATE TABLE tasks(
     running BOOLEAN NULL,
     details JSONB default '{}' NOT NULL
 );
+CREATE INDEX tasks_i1 ON tasks (space_id);

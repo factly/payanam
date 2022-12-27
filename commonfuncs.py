@@ -228,3 +228,42 @@ def timeDiff(t1,t2,formatted=True):
 def timeAdd(t1,delta):
     return secs2time( time2secs(t1) + delta)
 
+
+# In-memory cache for repeated queries
+dataCache = {}
+CACHE_LIMIT = int(os.environ.get('CACHE_LIMIT','60'))
+
+def getEpochTime():
+    # fetch time in secs
+    return time.time_ns() // pow(10,9)
+
+
+def fetchFromCache(item, limit=CACHE_LIMIT):
+    global dataCache
+    if dataCache.get(item, False):
+        currentT = getEpochTime()
+        # print(f"currentT: {currentT}, cache timestamp: {dataCache[item]['timestamp']}")
+        if currentT - dataCache[item]['timestamp'] > limit:
+            print(f"{item} in cache is too old")
+            return False
+        else:
+            print(f"Found {item} in cache")
+            return dataCache[item].get('data','')
+    else:
+        return False
+
+def saveToCache(item, data):
+    global dataCache
+    dataCache[item] = {
+        'data': data,
+        'timestamp': getEpochTime()
+    }
+    print(f"Saved {item} to cache")
+    return
+
+
+def clearCache(item):
+    global dataCache
+    dataCache.pop(item,None)
+    return
+
