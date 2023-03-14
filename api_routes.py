@@ -184,12 +184,13 @@ def getDepots():
 @app.get("/API/getRouteShapes", tags=["routes"])
 def getRouteShapes(route_id: str, precision: Optional[int]=6):
     cf.logmessage("getRouteShapes api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
     returnD = { "message": "success"}
 
     s1 = f"""
     select t1.id as route_id, t1.name as route_name,
-    t2.id as pattern_id, t2.name as pattern_name,
-    count(Q.stop_sequence) AS mapped_stops,
+    t2.id as pattern_id, t2.name as pattern_name, t2.sequence as sequence,
+    count(Q.stop_sequence) AS mapped_stops, t5.total_stops,
     ST_AsEncodedPolyline(ST_MakeLine(Q.geopoint::geometry ORDER BY Q.stop_sequence), {precision}) AS geoline
     from routes as t1
     left join patterns as t2
@@ -201,22 +202,28 @@ def getRouteShapes(route_id: str, precision: Optional[int]=6):
         where t4.geopoint is not null
         order by t3.stop_sequence
         ) as Q
+    on t2.id = Q.pattern_id
+    
     inner join ( select pattern_id, count(id) as total_stops from pattern_stops group by pattern_id) as t5
     on t2.id = t5.pattern_id
-    on t2.id = Q.pattern_id
+    
     where t1.id = '{route_id}'
-    group by t1.id, t2.id
+    group by t1.id, t2.id, t5.total_stops
+    order by t2.sequence
     """
 
     returnD['patterns'] = dbconnect.makeQuery(s1, output="list")
+    returnD['precision'] = precision
     return returnD
 
 
 @app.get("/API/routesOverview", tags=["routes"])
-def getRouteShapes():
+def routesOverview():
     cf.logmessage("routesOverview api call")
+    space_id = int(os.environ.get('SPACE_ID',1))
+
     returnD = { "message": "success"}
-    s1 = """
+    s1 = f"""
     select t1.depot, t1.id as route_id, t1.name as route_name,
     t2.id as pattern_id, t2.name as pattern_name,
     t3.all_stops, t4.mapped_stops, t4.hull, 
@@ -242,10 +249,13 @@ def getRouteShapes():
     
     inner join (select t8.pattern_id, count(t8.id) as num_trips from trips as t8 group by t8.pattern_id) as t7
     on t2.id = t7.pattern_id
+
+    where t1.space_id = {space_id}
+    order by depot, route_name
     """
     df1 = dbconnect.makeQuery(s1, output='df')
     if not len(df1):
-        returnD['data'] = None
+        returnD['routes_stats'] = None
         return returnD
 
     def grouper1(x):

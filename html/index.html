@@ -41,6 +41,7 @@
 <script src="lib/flatpickr.js"></script>
 <script src="lib/Sortable.min.js"></script>
 <script src="lib/selectize.min.js"></script>
+<script src="lib/polyline_convert.js"></script>
 
 
 <style>
@@ -48,10 +49,6 @@ body {
     color: black;    
 }
 
-.tabulator {
-    /*color: black !important;*/
-    size: 0.8em;
-}
 
 #map {
     height: 500px;
@@ -84,12 +81,12 @@ body {
 <body>
 <div id="topMenu"></div>
 <div class="container-fluid">
-<div class="row">
-<div class="col-md-6">
-    <big><big>Routes Overview</big> </big> 
+<div class="row top20">
+<div class="col-md-10">
+    <h4>Routes Overview</h4> 
 </div>
-<div class="col-md-6">
-    <small><div class="alert alert-secondary" id="status">Status</div></small>
+<div class="col-md-2">
+    <small><div id="status">Status</div></small>
 </div>
 </div>
 
@@ -104,14 +101,14 @@ body {
 
 <div class="row">
 <div class="col-md-8">
-    <h5>Toggle more columns:</h5>
+    <!-- <h5>Toggle more columns:</h5>
     <label><input type="checkbox" id="autoMapped"> % automapped</label> | 
     <label><input type="checkbox" id="manuallyMapped"> % manually mapped</label> | 
     <label><input type="checkbox" id="hull"> convex hull area</label> | 
     <label><input type="checkbox" id="filename"> filename</label> | 
     <label><input type="checkbox" id="busType"> bus type</label>
     <br><label><input type="checkbox" id="onwardMapped"> Onward %</label> | 
-    <label><input type="checkbox" id="returnMapped"> Return %</label>
+    <label><input type="checkbox" id="returnMapped"> Return %</label> -->
 </div>
 <div class="col-md-4">
 <small>

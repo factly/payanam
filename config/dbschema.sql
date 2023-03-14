@@ -1,3 +1,8 @@
+CREATE EXTENSION if not exists postgis;
+CREATE EXTENSION if not exists postgis_topology;
+CREATE EXTENSION if not exists fuzzystrmatch;
+
+
 DROP TABLE IF EXISTS accounts;
 CREATE TABLE accounts(
     org_id INT NULL,

@@ -50,7 +50,9 @@ var routes_tabulator = new Tabulator("#routes", {
         {title:"Stops", field:"num_stops", headerFilter:"input", headerTooltip:"number of stops (both directions)", width:55, headerSort:true,headerVertical:true },
         //{title:"trip times", field:"timings", headerTooltip:"if route has trips", width:50, headerSort:false, headerVertical:true, formatter:"tickCross", formatterParams:{crossElement:false} },
         // {title:"Trips", field:"num_trips", headerTooltip:"trips", width:50, headerSort:true, headerVertical:true, formatter:tickIcon },
+        {title:"Patterns", field:"num_patterns", headerTooltip:"Number of Patterns", width:50, headerSort:true, headerVertical:true },
         {title:"Trips", field:"num_trips", headerTooltip:"trips", width:50, headerSort:true, headerVertical:true },
+        {title:"Hull", field:"hull_sum", headerTooltip:"convex hull area", width:50, headerSort:true, headerVertical:true },
         // {title: "Print", formatter:printIcon, width:40, align:"center", headerVertical:true, cellClick:function(e, cell){
         //     let row = cell.getRow().getData();
         //     let jumpRoute = `${row['folder']}/${row['jsonFile']}`;
@@ -67,11 +69,14 @@ var routes_tabulator = new Tabulator("#routes", {
         //{title:"bus Type", field:"busType", headerFilter:"input", headerTooltip:"busType", width:60, headerSort:true, headerVertical:true },
         // {title:"jsonFile", field:"jsonFile", headerFilter:"input", headerTooltip:"jsonFile", width:140, headerSort:true },
     ],
-    rowSelected:function(row){ //when a row is selected
-        let stuff = row.getData();
-        drawLine(stuff['folder'],stuff['jsonFile']);
-	}
+ //    rowSelected:function(row){ //when a row is selected
+        
+ //        // let stuff = row.getData();
+ //        // drawLine(stuff['folder'],stuff['jsonFile']);
+	// }
 });
+
+
 
 // ########################
 // LEAFLET MAP
@@ -137,6 +142,13 @@ $(document).ready(function() {
     loadConfig();
 
     routesOverview();
+
+
+
+    routes_tabulator.on("rowSelected", function(row) {
+        rdata = row.getData();
+        mapRoute(rdata);
+    });
 
     // loadDefaults();
     // loadRoutes();
@@ -223,82 +235,138 @@ function routesOverview() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            let tableData = Papa.parse(returndata.routes_stats, {header:true, skipEmptyLines:true, dynamicTyping:true}).data;
-            console.log(tableData);
-            routes_tabulator.setData(tableData);
+            if(returndata.routes_stats) {
+                let tableData = Papa.parse(returndata.routes_stats, {header:true, skipEmptyLines:true, dynamicTyping:true}).data;
+                // console.log(tableData);
+                routes_tabulator.setData(tableData);
+                $('#status').html(`Loaded`);
+            }
+            else {
+                $('#status').html(`No routes in the system.`);
+            }
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
-            $('#status').html(jqXHR.responseText);
+            // $('#status').html(jqXHR.responseText);
         }
     });
 
 }
 
-function drawLine(folder,jsonFile,direction_id="0") {
-    console.log("Fetching route:",folder,jsonFile,direction_id);
-    $('#mapStatus').html('Loading..');
-    lineLayer.clearLayers();
-    // 28.5.19: Intervention: load the route's json directly instead of bothering the server.
-    $.getJSON(`routes/${folder}/${jsonFile}?_=${(new Date).getTime()}`, function(data) {
-        // putting timestamp at end so that new json is loaded every time.
-        lineLayer.clearLayers(); // clear me baby one more time
-        if(! Array.isArray(data[`stopsArray${direction_id}`])) {
-            $('#mapStatus').html('No lat-longs available for this route.');
-            return;
-        }
-        var collector = [];
-        data[`stopsArray${direction_id}`].forEach(row => {
-            let lat = parseFloat(row['stop_lat']);
-            let lon = parseFloat(row['stop_lon']);
-            if(checklatlng(lat,lon)) collector.push([lat,lon]);
-        });
-        var routeLine = L.polyline.antPath(collector, {color: 'red', weight:4, delay:1000, interactive:false }).addTo(lineLayer);
-        if (!map.hasLayer(lineLayer)) map.addLayer(lineLayer);
-        map.fitBounds(lineLayer.getBounds(), {padding:[0,0], maxZoom:15});
-        $('#mapStatus').html(`Loaded ${folder} / ${jsonFile}<br>onward direction. <a href="routeMap.html?route=${folder}/${jsonFile}" target="_blank"><b>Click to Edit</b></a>`);
+function mapRoute(rdata) {
+    let route_id = rdata.route_id;
+    console.log(route_id);
+    patternLayer.clearLayers();
 
-    }).fail(function(err) {
-		$('#mapStatus').html('No lat-longs available for this route.');
-	});
+    let pattern_names = rdata.patterns.split(',');
+    $('#mapStatus').html(`<b>${rdata.route_name}</b> <small>(${rdata.route_id})</small><br>
+        ${rdata.num_stops} stops, ${rdata.mapped_pc}% mapped<br>
+        ${rdata.num_trips} trips<br>
+        ${rdata.num_patterns} patterns:<br> ${pattern_names.join('<br>')}
+    `);
+
+    $.ajax({
+        url: `/API/getRouteShapes`,
+        type: "GET",
+        data : {route_id: route_id},
+        dataType: 'json',
+        cache: false,
+        success: function (returndata) {
+            console.log(returndata);
+            let precision = returndata.precision || 6;
+
+            returndata.patterns.forEach((p,i) => {
+                let coords = polyDecode(p.geoline, precision);
+                
+                let tooltipContent = `${p.pattern_name}`;
+                let percentMap = (p.mapped_stops / p.total_stops * 100).toFixed(1);
+                let popupContent = `Pattern <b>${p.pattern_name}</b> in ${rdata.route_name}<br><b>${percentMap}%</b> mapped (${p.mapped_stops}/${p.total_stops}`;
+                // decide color
+                let N = i;
+                if(i >= lineColors.length) {
+                    N = 0;
+                }
+                var routeLine = L.polyline.antPath(coords, {color: lineColors[i], weight:4, delay:1000 })
+                    .bindTooltip(tooltipContent, {sticky:true})
+                    .bindPopup(popupContent);
+                routeLine.addTo(patternLayer);
+            });
+            if (!map.hasLayer(patternLayer)) map.addLayer(patternLayer);
+            map.fitBounds(patternLayer.getBounds(), {padding:[0,0], maxZoom:15});
+        
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:" + jqXHR.responseText);
+            // $('#status').html(jqXHR.responseText);
+        }
+    });
 }
+
+
+// function drawLine(folder,jsonFile,direction_id="0") {
+//     console.log("Fetching route:",folder,jsonFile,direction_id);
+//     $('#mapStatus').html('Loading..');
+//     lineLayer.clearLayers();
+//     // 28.5.19: Intervention: load the route's json directly instead of bothering the server.
+//     $.getJSON(`routes/${folder}/${jsonFile}?_=${(new Date).getTime()}`, function(data) {
+//         // putting timestamp at end so that new json is loaded every time.
+//         lineLayer.clearLayers(); // clear me baby one more time
+//         if(! Array.isArray(data[`stopsArray${direction_id}`])) {
+//             $('#mapStatus').html('No lat-longs available for this route.');
+//             return;
+//         }
+//         var collector = [];
+//         data[`stopsArray${direction_id}`].forEach(row => {
+//             let lat = parseFloat(row['stop_lat']);
+//             let lon = parseFloat(row['stop_lon']);
+//             if(checklatlng(lat,lon)) collector.push([lat,lon]);
+//         });
+//         var routeLine = L.polyline.antPath(collector, {color: 'red', weight:4, delay:1000, interactive:false }).addTo(lineLayer);
+//         if (!map.hasLayer(lineLayer)) map.addLayer(lineLayer);
+//         map.fitBounds(lineLayer.getBounds(), {padding:[0,0], maxZoom:15});
+//         $('#mapStatus').html(`Loaded ${folder} / ${jsonFile}<br>onward direction. <a href="routeMap.html?route=${folder}/${jsonFile}" target="_blank"><b>Click to Edit</b></a>`);
+
+//     }).fail(function(err) {
+// 		$('#mapStatus').html('No lat-longs available for this route.');
+// 	});
+// }
 
 
 // ############################################
 // JS FUNCTIONS
-function loadRoutes(which='progress') {
-    $('#status').html(`Loading..`);
-    var filename = '';
-    if(which == 'all') filename = 'routes.csv';
-    if(which == 'progress') filename = 'routes_inprogress.csv';
-    if(which == 'locked') filename = 'routes_locked.csv';
+// function loadRoutes(which='progress') {
+//     $('#status').html(`Loading..`);
+//     var filename = '';
+//     if(which == 'all') filename = 'routes.csv';
+//     if(which == 'progress') filename = 'routes_inprogress.csv';
+//     if(which == 'locked') filename = 'routes_locked.csv';
 
-	Papa.parse(`reports/${filename}?_=${(new Date).getTime()}`, {
-        // a "cache buster" to force always load from disk instead of cache, from https://stackoverflow.com/a/48883260/4355695
-		download: true,
-		header: true,
-		skipEmptyLines: true,
-		complete: function(results, file) {
-            // Intervention: pre-process, check for timings and just put true/false like flags for tript times and frequency
-            results.data.forEach(row => {
-                timeFlag = false
-                freqFlag = false
-                // checks
-                if (row.hasOwnProperty('t0.trip_times')) { if(row['t0.trip_times'].length > 2) timeFlag = true; }
-                if (row.hasOwnProperty('t1.trip_times')) { if(row['t1.trip_times'].length > 2) timeFlag = true; }
+// 	Papa.parse(`reports/${filename}?_=${(new Date).getTime()}`, {
+//         // a "cache buster" to force always load from disk instead of cache, from https://stackoverflow.com/a/48883260/4355695
+// 		download: true,
+// 		header: true,
+// 		skipEmptyLines: true,
+// 		complete: function(results, file) {
+//             // Intervention: pre-process, check for timings and just put true/false like flags for tript times and frequency
+//             results.data.forEach(row => {
+//                 timeFlag = false
+//                 freqFlag = false
+//                 // checks
+//                 if (row.hasOwnProperty('t0.trip_times')) { if(row['t0.trip_times'].length > 2) timeFlag = true; }
+//                 if (row.hasOwnProperty('t1.trip_times')) { if(row['t1.trip_times'].length > 2) timeFlag = true; }
 
-                if (row.hasOwnProperty('t0.frequency')) { if(parseInt(row['t0.frequency']) > 0) freqFlag = true; }
-                if (row.hasOwnProperty('t1.frequency')) { if(parseInt(row['t1.frequency']) > 0) freqFlag = true; }
+//                 if (row.hasOwnProperty('t0.frequency')) { if(parseInt(row['t0.frequency']) > 0) freqFlag = true; }
+//                 if (row.hasOwnProperty('t1.frequency')) { if(parseInt(row['t1.frequency']) > 0) freqFlag = true; }
 
-                row['timings']=timeFlag;
-                row['frequency']=freqFlag;
-            });
-            routes_tabulator.setData(results.data);
-            $('#status').html(`Loaded ${filename}.<br>
-                <a href="reports/${filename}">Click to download</a>`);
-        },
-        error: function(err, file, inputElem, reason) {
-                $('#status').html(`Could not load ${filename}, check reports folder.`);
-        },
-	});
-}
+//                 row['timings']=timeFlag;
+//                 row['frequency']=freqFlag;
+//             });
+//             routes_tabulator.setData(results.data);
+//             $('#status').html(`Loaded ${filename}.<br>
+//                 <a href="reports/${filename}">Click to download</a>`);
+//         },
+//         error: function(err, file, inputElem, reason) {
+//                 $('#status').html(`Could not load ${filename}, check reports folder.`);
+//         },
+// 	});
+// }

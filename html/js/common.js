@@ -5,25 +5,7 @@
 var globalConfig = [];
 var globalDepotsList = [];
 
-/* template for API calls
 
-var payload = {"description": "hello" };
-$.ajax({
-    url : `${APIpath}/getData1`,
-    type : 'POST',
-    data : JSON.stringify(payload),
-    cache: false,
-    contentType: 'application/json',
-    // dataType : 'html',
-    success : function(returndata) {
-        processData(returndata.data);
-    },
-    error: function(jqXHR, exception) {
-        console.log('error:',jqXHR.responseText);
-        alert(jqXHR.responseText);
-    }
-});
-*/
 
 
 // CONSTANTS
@@ -51,6 +33,7 @@ const suggestedColor = 'blue';
 // Colors to use in allMap.html page. from http://phrogz.net/css/distinct-colors.html
 const phrogzColors = ["#ff0000", "#bfa98f", "#8fbf96", "#00294d", "#eabfff", "#e50000", "#736556", "#00f241", "#1d4b73", "#9d7ca6", "#a60000", "#b27700", "#004011", "#b6d6f2", "#d600e6", "#f23d3d", "#664400", "#3df285", "#738799", "#912699", "#bf6060", "#f2b63d", "#43594c", "#004cbf", "#de73e6", "#7f4040", "#ccaa66", "#16593a", "#668fcc", "#590053", "#e6acac", "#594a2d", "#0d3321", "#1d3473", "#664d64", "#997373", "#332f26", "#73e6b0", "#80a2ff", "#330029", "#8c3123", "#7f6600", "#bfffe1", "#b6c6f2", "#ff40d9", "#ff9180", "#403300", "#698c7c", "#4d5366", "#4d2645", "#402420", "#f2da79", "#008c5e", "#4059ff", "#e60099", "#594643", "#7f7340", "#60bfac", "#131b4d", "#a6297c", "#591800", "#bfb68f", "#00f2e2", "#1a1d33", "#d96cb5", "#401100", "#fff240", "#008c83", "#0000ff", "#7f0044", "#d96236", "#b2aa2d", "#10403d", "#0000cc", "#8c466c", "#d9896c", "#535900", "#336663", "#3030bf", "#f2b6d6", "#7f5140", "#eef2b6", "#8fbfbc", "#737399", "#4d3944", "#cca799", "#c2f200", "#00e2f2", "#110080", "#f23d85", "#ff6600", "#2b330d", "#00add9", "#aaa3d9", "#4c132a", "#a64200", "#cfe673", "#1d6273", "#110040", "#997382", "#ff8c40", "#6d7356", "#13414d", "#341d73", "#66001b", "#66381a", "#739926", "#79daf2", "#a280ff", "#400011", "#402310", "#74d900", "#566d73", "#3e394d", "#992645", "#e5a173", "#628040", "#00aaff", "#3e2d59", "#bf6079", "#ffd9bf", "#315916", "#002b40", "#7400d9", "#663341", "#995200", "#b2ff80", "#297ca6", "#660099", "#cc3347", "#ffa640", "#d0ffbf", "#262f33", "#75468c", "#ff8091", "#a67f53", "#29a63a", "#0058a6", "#2b1a33"];
 
+const lineColors = ["#ff0000", "#00a3d4", "#0000ff", "#168701", "ff00ff"];
 // map crosshair size etc:
 const crosshairPath = 'lib/focus-black.svg';
 const crosshairSize = 30;
@@ -128,6 +111,25 @@ $(document).ready(function() {
 // ###########################################################
 // FUNCTIONS
 
+/* template for API calls
+
+var payload = {"description": "hello" };
+$.ajax({
+    url : `${APIpath}/getData1`,
+    type : 'POST',
+    data : JSON.stringify(payload),
+    cache: false,
+    contentType: 'application/json',
+    // dataType : 'html',
+    success : function(returndata) {
+        processData(returndata.data);
+    },
+    error: function(jqXHR, exception) {
+        console.log('error:',jqXHR.responseText);
+        alert(jqXHR.responseText);
+    }
+});
+*/
 
 function checklatlng(lat,lon) {
 	if ( typeof lat == 'number' && 
@@ -458,6 +460,24 @@ function loadURLParams(URLParams) {
 function getTodayDate() {
     let d = new Date();
     return d.toISOString().split('T')[0];
+}
+
+function roundFloor(n, decimals=3) {
+    let x = Math.pow(10,decimals);
+    return Math.floor(n*x)/x;
+}
+
+function roundCeil(n, decimals=3) {
+    let x = Math.pow(10,decimals);
+    return Math.ceil(n*x)/x;
+}
+
+function truncateString(str, num=50) {
+    // adapted from https://medium.com/@DylanAttal/truncate-a-string-in-javascript-41f33171d5a8
+    if (str.length <= num) {
+        return str;
+    }
+    return str.slice(0, num) + '...';
 }
 
 // #########################

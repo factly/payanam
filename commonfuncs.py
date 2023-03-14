@@ -229,6 +229,12 @@ def timeAdd(t1,delta):
     return secs2time( time2secs(t1) + delta)
 
 
+def makeBboxPoly(lat1, lat2, lon1, lon2):
+    bboxWKT = f"POLYGON(({lon1} {lat1}, {lon1} {lat2}, {lon2} {lat2}, {lon2} {lat1}, {lon1} {lat1}))"
+    return bboxWKT
+
+
+#####################
 # In-memory cache for repeated queries
 dataCache = {}
 CACHE_LIMIT = int(os.environ.get('CACHE_LIMIT','60'))

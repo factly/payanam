@@ -4,3 +4,4 @@ local_launch.sh
 working
 output/*.html
 output/gtfs_*
+env*.txt
