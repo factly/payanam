@@ -1196,10 +1196,19 @@ function searchByAjax(text, callResponse){
     });
 }
 
+function mapSearchFunc(textSearch, allRecords) {
+    // Put in to disable any further filtering of search results from frontend side; just show the backend's results as-is
+    // console.log('textSearch:',textSearch, 'allRecords:',allRecords);
+    return allRecords;
+}
+
+// ref: https://github.com/stefanocudini/leaflet-search
 map.addControl( new L.Control.Search({ 
         sourceData: searchByAjax, 
         text:'Searh a stop...', 
-        markerLocation: true
+        markerLocation: true,
+        minLength: 3,
+        filterData: mapSearchFunc
     })
 );
 

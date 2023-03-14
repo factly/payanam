@@ -346,45 +346,11 @@ def deleteStops(req: deleteStops_payload):
 
 ###############
 
-@app.get("/API/searchStops", tags=["stops"])
-def searchStops(
-        q: str,
-        mapped: Optional[str] = 'y'
-     ):
-    """
-    for working with https://opengeo.tech/maps/leaflet-search/examples/ajax-jquery.html
-    response should be like: [{"loc":[41.57573,13.002411],"title":"black"}]
-    """
-    space_id = int(os.environ.get('SPACE_ID',1))
-    mappedQuery = '';
-    if mapped.lower() == 'y':
-        mappedQuery = "and latitude is not null and longitude is not null"
-    
-    s1 = f"""select name, 
-    ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
-    from stops_master
-    where space_id = {space_id}
-    and name ilike '%{q}%'
-    {mappedQuery}
-    order by name
-    """
-    df = dbconnect.makeQuery(s1, output='df')
-    result = []
-    if not len(df):
-        return result
 
-    for row in df.to_dict(orient='records'):
-        result.append({
-            "loc": [row['latitude'], row['longitude']],
-            "title": row['name']    
-        })
-    return result
-
-
-###############
 
 class diagnoseStops_payload(BaseModel):
     idsList: List[str]
+    routePatternDetails: Optional[bool] = False
 
 @app.post("/API/diagnoseStops", tags=["stops"])
 def diagnoseStops(req: diagnoseStops_payload ):
@@ -395,22 +361,51 @@ def diagnoseStops(req: diagnoseStops_payload ):
     cf.logmessage("diagnoseStops api call")
     idsListSQL = cf.quoteNcomma(req.idsList)
     s1 = f"""
-    select t1.stop_id, t1.pattern_id, 
-    t2.route_id, t2.name as pattern_name, 
-    t3.depot, t3.name, t3.description
+    select t1.stop_id, count(distinct t1.pattern_id) as pattern_count, count(distinct t2.route_id) as route_count
     from pattern_stops as t1 
     left join patterns as t2
     on t1.pattern_id = t2.id
-    left join routes as t3
-    on t2.route_id = t3.id
     where t1.stop_id in ({idsListSQL})
+    group by  t1.stop_id
     """
+    # s1 = f"""
+    # select t1.stop_id, t1.pattern_id, 
+    # t2.route_id, t2.name as pattern_name, 
+    # t3.depot, t3.name, t3.description
+    # from pattern_stops as t1 
+    # left join patterns as t2
+    # on t1.pattern_id = t2.id
+    # left join routes as t3
+    # on t2.route_id = t3.id
+    # where t1.stop_id in ({idsListSQL})
+    # """
     df1 = dbconnect.makeQuery(s1, output='df', fillna=False)
 
     returnD = { "message": "success" }
     if not len(df1):
-        returnD['patternCount'] = 0
+        returnD['pattern_count'] = 0
         return returnD
+
+    returnD['idsList'] = req.idsList
+    returnD['pattern_count'] =  df1['pattern_count'].tolist()
+    returnD['route_count'] =  df1['route_count'].tolist()
+
+    if routePatternDetails:
+        s2 = f"""select t1.stop_id, t2.route_id, t3.name as route_name, 
+        t1.pattern_id, t2.name as pattern_name, t3.depot 
+        from pattern_stops as t1 
+        left join patterns as t2
+        on t1.pattern_id = t2.id
+        left join routes as t3
+        on t2.route_id = t3.id
+        where t2.space_id = 1 and t1.stop_id in ({idsListSQL})
+        order by depot, route_name
+        """
+        df2 = dbconnect.makeQuery(s2, output='df', fillna=False)
+        if len(df2):
+            returnD['details'] = df2.to_csv(index=False)
+        else:
+            returnD['details'] = ''
 
     # returnD['stops'] = df1.to_dict(orient='records')
     # print(df1)
@@ -418,11 +413,11 @@ def diagnoseStops(req: diagnoseStops_payload ):
     # return returnD
     # print("uniques:",df1['route_id'].unique())
     
-    returnD['patterns'] = [x for x in df1['pattern_id'].unique() if x is not None]
-    returnD['patternCount'] = len(returnD['patterns'])
+    # returnD['patterns'] = [x for x in df1['pattern_id'].unique() if x is not None]
+    # returnD['pattern_count'] = len(returnD['patterns'])
 
-    returnD['routes'] = [x for x in df1['route_id'].unique() if x is not None]
-    returnD['routeCount'] = len(returnD['routes'])
+    # returnD['routes'] = [x for x in df1['route_id'].unique() if x is not None]
+    # returnD['route_count'] = len(returnD['routes'])
 
     return returnD
 
@@ -455,14 +450,14 @@ def deleteStopsConfirm(req: deleteStopsConfirm_payload ):
         where space_id = {space_id}
         and id in ({patternsListSQL})"""
         routesList = dbconnect.makeQuery(s4, output='column')
-        returnD['routeCount'] = len(routesList)
+        returnD['route_count'] = len(routesList)
 
         # delete stop's entries from pattern_stops
         d1 = f"""delete from pattern_stops 
         where space_id = {space_id}
         and stop_id in ({idsListSQL})"""
         pattern_deleted = dbconnect.execSQL(d1)
-        returnD['patternCount'] = pattern_deleted
+        returnD['pattern_count'] = pattern_deleted
 
         # now, update job in all the patterns where this stop was.
 

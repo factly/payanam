@@ -255,7 +255,7 @@ def routesOverview():
     """
     df1 = dbconnect.makeQuery(s1, output='df')
     if not len(df1):
-        returnD['data'] = None
+        returnD['routes_stats'] = None
         return returnD
 
     def grouper1(x):

@@ -118,11 +118,11 @@ L.control.custom({
     classes: 'divOnMap_right'
 }).addTo(map);
 
-// L.control.custom({
-//     position: 'bottomleft',
-//     content: `<span id="map_id">Select a stop</span><br><div id="trainHolder"></div> `,
-// classes: 'divOnMap_left'
-// }).addTo(map);
+L.control.custom({
+    position: 'bottomleft',
+    content: `<div id="routesInfo"></div> `,
+classes: 'divOnMap_left'
+}).addTo(map);
 
 // Add in a crosshair for the map. From https://gis.stackexchange.com/a/90230/44746
 var crosshairIcon = L.icon({
@@ -476,8 +476,38 @@ function unmapped() {
 
 function setupStopEditing(id, name='') {
     $('#stopHolder').html(`<span id="id">${id}</span><br><input id="new_name" value="${name}" placeholder="stop name"><br>
-            <button onclick="updateStopLocation('${id}')">Set new location</button> <button onclick="renameStop('${id}')">Rename</button><br>
-            <span id="updateStop_status"></span><br>`);
+        <button onclick="updateStopLocation('${id}')">Set new location</button> <button onclick="renameStop('${id}')">Rename</button><br>
+        <span id="updateStop_status"></span><br>
+    `);
+
+    // fetching stop's route details
+    let payload = {
+        "idsList": [id],
+        "routePatternDetails": true
+    };
+    console.log(payload);
+
+    $.ajax({
+        url: `/API/diagnoseStops`,
+        type: "POST",
+        data : JSON.stringify(payload),
+        cache: false,
+        processData: false,  // tell jQuery not to process the data
+        contentType: 'application/json',
+        success: function (returndata) {
+            // console.log(returndata);
+            let routeData = Papa.parse(returndata.routes_stats, {header:true, skipEmptyLines:true, dynamicTyping:true}).data;
+            console.log(routeData);
+            
+
+        },
+        error: function (jqXHR, exception) {
+            console.log("error:", jqXHR.responseText);
+        },
+    });
+
+    $('#routesInfo').html(`This stop is included in routes:<br>
+    `);
 }
 
 function deleteStop() {
@@ -507,8 +537,8 @@ function deleteStop() {
             $('#stopsTable_status').html(`Fetched data on the selected stop(s).`);
             console.log(returndata);
             let question = `Are you sure you want to delete these stop(s)?`;
-            if (returndata.patternCount && returndata.patternCount > 0) {
-                question = `Are you sure you want to delete these stops? This will affect ${returndata.patternCount} patterns in ${returndata.routeCount} routes`;
+            if (returndata.pattern_count && returndata.pattern_count > 0) {
+                question = `Are you sure you want to delete these stops? This will affect ${returndata.pattern_count} patterns in ${returndata.routeCount} routes`;
             }
             
             if(confirm(question)) {
@@ -522,8 +552,8 @@ function deleteStop() {
                     contentType: 'application/json',
                     success: function (returndata2) {
                         console.log(returndata2);
-                        if (returndata.patternCount && returndata.patternCount > 0)
-                            $('#stopsTable_status').html(`Deleted ${returndata2.stopCount} stop(s), ${returndata2.patternCount} pattern(s) in ${returndata2.routeCount} routes affected.`);
+                        if (returndata.pattern_count && returndata.pattern_count > 0)
+                            $('#stopsTable_status').html(`Deleted ${returndata2.stopCount} stop(s), ${returndata2.pattern_count} pattern(s) in ${returndata2.routeCount} routes affected.`);
                         else 
                             $('#stopsTable_status').html(`Deleted ${returndata2.stopCount} stop(s)`);
                         loadStops();
@@ -605,3 +635,5 @@ function renameStop(id) {
         },
     });
 }
+
+

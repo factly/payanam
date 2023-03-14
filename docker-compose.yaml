@@ -1,0 +1,43 @@
+version: "3.3"
+
+services:
+    postgis:
+        container_name: postgis1
+        build:
+            context: ./postgis_build
+            dockerfile: Dockerfile-pg
+        ports:
+            - "5501:5432"
+        volumes:
+            - ./postgis_build:/docker-entrypoint-initdb.d/:ro
+            - ./db_payanam:/var/lib/postgresql/data:rw
+        env_file:
+            - env-db-local.txt
+        environment:
+            POSTGRES_PASSWORD: 'user'
+            POSTGRES_USER: 'pass'
+            POSTGRES_DB: 'db'
+        
+    python:
+        image: payanam1
+        container_name: payanam1
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        depends_on:
+            - "postgis"
+        restart: always
+        env_file:
+            - env-app-local.txt
+        ports:
+            - "5500:5500"
+        volumes:
+            - ./output:/code/output:rw
+
+volumes:
+    output: {}
+    postgis_build: {}
+    python_db: {}
+    minio_data: {}
+    # wordpress: {}
+

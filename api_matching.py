@@ -17,6 +17,43 @@ import dbconnect
 space_id = int(os.environ.get('SPACE_ID',1))
 
 
+###############
+
+@app.get("/API/searchStops", tags=["matching"])
+def searchStops(
+        q: str,
+        mapped: Optional[str] = 'y',
+        metaphone_len: Optional[int] = 10
+     ):
+    """
+    for working with https://opengeo.tech/maps/leaflet-search/examples/ajax-jquery.html
+    response should be like: [{"loc":[41.57573,13.002411],"title":"black"}]
+    """
+    space_id = int(os.environ.get('SPACE_ID',1))
+    mappedQuery = '';
+    if mapped.lower() == 'y':
+        mappedQuery = "and geopoint is not null"
+    
+    s1 = f"""select name, metaphone(name,{metaphone_len}) as metaphone_name,
+    ST_Y(geopoint::geometry) as latitude, ST_X(geopoint::geometry) as longitude
+    from stops_master
+    where space_id = {space_id}
+    and metaphone(name,{metaphone_len}) like concat('%',metaphone('{q}',{metaphone_len}),'%')
+    {mappedQuery}
+    order by name
+    """
+    # name ilike '%{q}%'
+    df = dbconnect.makeQuery(s1, output='df')
+    result = []
+    if not len(df):
+        return result
+
+    for row in df.to_dict(orient='records'):
+        result.append({
+            "loc": [row['latitude'], row['longitude']],
+            "title": row['name']    
+        })
+    return result
 
 ###############
 

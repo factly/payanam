@@ -235,9 +235,15 @@ function routesOverview() {
         cache: false,
         contentType: 'application/json',
         success: function (returndata) {
-            let tableData = Papa.parse(returndata.routes_stats, {header:true, skipEmptyLines:true, dynamicTyping:true}).data;
-            console.log(tableData);
-            routes_tabulator.setData(tableData);
+            if(returndata.routes_stats) {
+                let tableData = Papa.parse(returndata.routes_stats, {header:true, skipEmptyLines:true, dynamicTyping:true}).data;
+                // console.log(tableData);
+                routes_tabulator.setData(tableData);
+                $('#status').html(`Loaded`);
+            }
+            else {
+                $('#status').html(`No routes in the system.`);
+            }
         },
         error: function (jqXHR, exception) {
             console.log("error:" + jqXHR.responseText);
@@ -260,11 +266,11 @@ function mapRoute(rdata) {
     `);
 
     $.ajax({
-        url: `/API/getRouteShapes?route_id=${route_id}`,
+        url: `/API/getRouteShapes`,
         type: "GET",
-        // data : JSON.stringify(payload),
+        data : {route_id: route_id},
+        dataType: 'json',
         cache: false,
-        contentType: 'application/json',
         success: function (returndata) {
             console.log(returndata);
             let precision = returndata.precision || 6;

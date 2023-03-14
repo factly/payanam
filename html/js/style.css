@@ -145,3 +145,30 @@ body {
     font-size: 0.7em;
 }
 
+
+.divOnMap_left {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.6);
+    /*font-size: 14px;*/
+    border-radius: 5px;
+    box-shadow:0px 0px 5px black; 
+    min-height: 100px;
+    max-height: 300px;
+    width: 270px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.divOnMap_right {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.6);
+    /*font-size: 14px;*/
+    border-radius: 5px;
+    box-shadow:0px 0px 5px black; 
+    height: 100px;
+    width: 200px;
+}
+
+.top20 {
+    padding-top: 20px;
+}
