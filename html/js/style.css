@@ -172,3 +172,8 @@ body {
 .top20 {
     padding-top: 20px;
 }
+
+
+.leaflet-container {
+    background-color: #fff;
+}

@@ -184,7 +184,7 @@ function loadRoutesList(route_id) {
     $('#route_status').html(`Loading routes...`);
     let payload = {};
     $.ajax({
-        url: `/API/loadRoutesList`,
+        url: `${APIpath}loadRoutesList`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -261,7 +261,7 @@ function routeAction() {
     }
 
     $.ajax({
-        url: `/API/addRoute`,
+        url: `${APIpath}addRoute`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -296,7 +296,7 @@ function loadRouteDetails(route_id, pattern_id=null) {
     $('#route_status').html(`Loading route id ${route_id}...`);
     let payload = { route_id: route_id };
     $.ajax({
-        url: `/API/loadRouteDetails`,
+        url: `${APIpath}loadRouteDetails`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -363,7 +363,7 @@ function loadPattern(pid) {
         'pattern_id': pid
     };
     $.ajax({
-        url: `/API/loadPattern`,
+        url: `${APIpath}loadPattern`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -422,7 +422,7 @@ function deletePattern() {
     };
     $('#pattern_status').html(`Deleting pattern...`);
     $.ajax({
-        url: `/API/deletePatterns`,
+        url: `${APIpath}deletePatterns`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -445,7 +445,7 @@ function updatePatternsOrder() {
     console.log("updatePatternsOrder:", payload.sequence);
     $('#pattern_status').html('Updating patterns order...');
     $.ajax({
-        url: `/API/updatePatternsOrder`,
+        url: `${APIpath}updatePatternsOrder`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -484,7 +484,7 @@ function addPattern() {
     };
     $('#pattern_status').html('Adding pattern...');
     $.ajax({
-        url: `/API/addPattern`,
+        url: `${APIpath}addPattern`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -513,7 +513,7 @@ function savePattern() {
     // console.log("savePattern:", payload);
     $('#savePattern_status').html(`Saving...`);
     $.ajax({
-        url: `/API/editPattern`,
+        url: `${APIpath}editPattern`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -555,7 +555,7 @@ function loadStops() {
         "indexed": true };
     $('#belowMap').html(`Loading stops..`);
     $.ajax({
-        url: `/API/loadStops`,
+        url: `${APIpath}loadStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -734,7 +734,7 @@ function copyFromPattern(pid) {
         'pattern_id': pid
     };
     $.ajax({
-        url: `/API/loadPattern`,
+        url: `${APIpath}loadPattern`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -811,7 +811,7 @@ function addStopsByName() {
     };
     // stopsEntry
     $.ajax({
-        url: `/API/addStops`,
+        url: `${APIpath}addStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -963,7 +963,7 @@ function route_newStop() {
     }] };
     $('#route_newStop_status').html(`Adding the stop to DB..`);
     $.ajax({
-        url: `/API/addStops`,
+        url: `${APIpath}addStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -1028,7 +1028,7 @@ function route_UnMappedStop() {
     console.log(payload);
     $('#route_unMappedStop_status').html(`Mapping the stop in DB..`);
     $.ajax({
-        url: `/API/updateStops`,
+        url: `${APIpath}updateStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -1138,7 +1138,7 @@ function loadSuggestions() {
     $('#suggestions').html(`Loading..`);
     
     $.ajax({
-        url: `/API/suggestMatches`,
+        url: `${APIpath}suggestMatches`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -1233,7 +1233,7 @@ function autoMapPattern() {
     };
     $('#autoMapPattern_status').html(`Processing, please wait a few secs...`);
     $.ajax({
-        url: `/API/autoMapPattern`,
+        url: `${APIpath}autoMapPattern`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,

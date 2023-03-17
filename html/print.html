@@ -9,6 +9,7 @@
 <link href="lib/bootstrap.v4.0.0.min.css" crossorigin="anonymous" alt="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" rel="stylesheet">
 <link rel="stylesheet" href="lib/easy-button.css" alt="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
 <link rel="stylesheet" href="lib/chosen/chosen.min.css">
+<link href="lib/selectize.bootstrap4.min.css" rel="stylesheet" />
 
 <link href="js/style.css" rel="stylesheet">
 
@@ -26,8 +27,7 @@
 <script src="lib/Leaflet.Control.Custom.js"></script>
 <script src="lib/leaflet-providers.js"></script>
 <script src="lib/leaflet.textpath.js"></script>
-<!-- <script src="lib/leaflet-tooltip-layout.dist.js"></script>
--->
+<script src="lib/selectize.min.js"></script>
 <style>
 
 .map {
@@ -50,7 +50,7 @@ width: 100%;
     border-bottom: 1px solid black;
 }
 */
-.stop-divicon0, .stop-divicon1 {
+.stop-divicon {
 	border-radius: 100%;
 	color: white;
 	padding-top: 1px;
@@ -122,46 +122,83 @@ select.background {
 <body>
 
 <div id="topMenu"></div>
+<div class="container-fluid">
 
+<div class="row no-print top20">
+<div class="col-md-3">
+    <h5><b>Data</b></h5>
+    <div class="row">
+        <div class="col-md-3">
+            <select id="depot_select" class="bigSelect"></select>
+        </div>
+        <div class="col-md-9">
+            <select id="routes_list"></select>
+        </div>
+    </div>
+    <br><p>Active Pattern: <select id="pattern_chosen" class="bigSelect" onchange="loadPattern(this.value)">
+        <option value="">Select a Pattern</option>
+    </select></p>
+    <p id="route_status"></p>
+</div>
+<div class="col-md-4">
+    <h5><b>Customize the map</b></h5>
+    <p>Change page dimensions: <small>can make it big!</small><br></p>
+    <p>W:<input class="width" size="4" value="1000" type="number" min="100" max="100000" step="10">px, 
+    H:<input class="height" size="4" value="1450" type="number" min="100" max="100000" step="10">px</p>
+    <p>Map part:<input class="ratio" size="5" value="80" type="number" min="20" max="100" step="1">% &nbsp;&nbsp;
+    <button onclick="changeDimensions()">Apply</button>
+    &nbsp; | &nbsp; 
+    <a onclick="changeDimensions(true)" href="javascript:;">Reset</a>
+    </p>
+    <!--Presets: <a>A4</a> | <a>A3</a> | <a>A2</a> | <a>A1</a>-->
+    <p>Change background: <select class="background"></select> </p>
 
-<div class="page dir0">
-<div id="map0" class="map nopad"></div>
-<div style="clear: both;"></div>
-<div class="stopsPart">
+    <a onclick="zoomFit()" href="javascript:;">Fit map to Layers</a> | 
+    <button onclick="window.print()" class="btn btn-primary">Print</button>
+    <br>
+</div>
+<div class="col-md-3">
+    <h5><b>Color</b></h5>
+    <p>Track color: <input id="trackColor" value="black" size="8"></p>
+    <p>Stop num color:<input id="fontColor" value="white" size="8"></p>
+    <p>Stop fill color:<input id="iconColor" value="black" size="8"></p>
+    <p><button onclick="changeColor()">Apply</button></p>
+
+</div>
+<div class="col-md-2">
+    <h5><b>Transparency</b></h5>
+    Map: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider1"></div>
+    Stops: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider2"></div>
+    Route: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider3"></div>
+</div>
+</div>
+
 <br>
-<small><div class="stopsListContainer">
-<ul class= "stopsList">
-</ul>
-</div></small>
-<br>
-<small><p class="timings"></p></small>
-<small><p class="service"></p></small>
-</div></div>
-
+<div align="center">
+<div class="page">
+    <div id="map" class="map nopad"></div>
+    <div style="clear: both;"></div>
+    <div class="stopsPart">
+        <br>
+        <small><div class="stopsListContainer" align="left">
+            <ul class= "stopsList">
+            </ul>
+        </div></small>
+        <br>
+        <small><p class="timings"></p></small>
+        <small><p class="service"></p></small>
+    </div>
+</div>
+</div>
 <div class="no-print">
 <br><hr><br>
 </div>
-
-<div class="page dir1">
-<div id="map1" class="map nopad"></div>
-<div style="clear: both;"></div>
-<div class="stopsPart">
-<br>
-<small><div class="stopsListContainer">
-<ul class= "stopsList">
-</ul>
-</div></small>
-<br>
-<small><p class="timings"></p></small>
-<small><p class="service"></p></small>
-</div></div>
 
 <p class="no-print"><br><br>Press Ctrl+P to Print the contents of the box above.<br>
 Extra things (like top menu, links) will be omitted from the printout.<br>
 Make sure to check on the "Background graphics" option in print settings.
 </p>
-<div id="keyStatus" class="no-print"></div>
-
+</div>
 <!-- END HTML. BEGIN SCRIPT-->
 <script src="js/common.js"></script>
 <script src="js/print.js"></script>

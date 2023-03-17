@@ -13,10 +13,6 @@ services:
             - ./db_payanam:/var/lib/postgresql/data:rw
         env_file:
             - env-db-local.txt
-        environment:
-            POSTGRES_PASSWORD: 'user'
-            POSTGRES_USER: 'pass'
-            POSTGRES_DB: 'db'
         
     python:
         image: payanam1
@@ -38,6 +34,5 @@ volumes:
     output: {}
     postgis_build: {}
     python_db: {}
-    minio_data: {}
-    # wordpress: {}
+
 

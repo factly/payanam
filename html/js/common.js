@@ -238,6 +238,9 @@ function topMenu() {
       <li class="nav-item">
           <a class="nav-link" href="reconciliation.html">Combine Stops</a>
       </li>
+      <li class="nav-item">
+          <a class="nav-link" href="print.html">Print</a>
+      </li>
       
       
     </ul>
