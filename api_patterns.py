@@ -53,17 +53,20 @@ def updatePatternsOrder(req: updatePatternsOrder_payload):
 
     # 2 sets of updates to avoid breaking the route + sequence constraint.
     # First, set the new sequences as negative numbers, which we know for sure aren't being taken up.
+    db_statements1 = []
     for N, pid in enumerate(req.sequence):
         newSeq = -(N+1)
-        u1 = f"update patterns set sequence={newSeq} where id='{pid}'"
-        uCount = dbconnect.execSQL(u1)
-
+        db_statements1.append(f"update patterns set sequence={newSeq} where id='{pid}'")
+        # uCount = dbconnect.execSQL(u1)
+    u1Count = dbconnect.execSQL(' ; '.join(db_statements1))
+    
     # After, populate actual new sequence numbers. All positive nums were cleared so are available.
+    db_statements2 = []
     for N, pid in enumerate(req.sequence):
         newSeq = (N+1)
-        u2 = f"update patterns set sequence={newSeq} where id='{pid}'"
-        uCount = dbconnect.execSQL(u2)
-
+        db_statements2.append(f"update patterns set sequence={newSeq} where id='{pid}'")
+    
+    u2Count = dbconnect.execSQL(' ; '.join(db_statements2))
     
     return returnD
 
@@ -78,18 +81,23 @@ def deletePatterns(req: deletePatterns_payload):
     cf.logmessage("deletePatterns api call")
     space_id = int(os.environ.get('SPACE_ID',1))
     patternsSQL = cf.quoteNcomma(req.patterns)
+    statements = []
     d1 = f"delete from pattern_stops where space_id={space_id} and pattern_id in ({patternsSQL})"
     d2 = f"delete from patterns where space_id={space_id} and id in ({patternsSQL})"
     
-    d1Count = dbconnect.execSQL(d1)
-    d2Count = dbconnect.execSQL(d2)
+    # d1Count = dbconnect.execSQL(d1)
+    # d2Count = dbconnect.execSQL(d2)
 
     # also trips and timings under the pattern
     d3 = f"delete from stop_times where space_id={space_id} and trip_id in (select id from trips where pattern_id in ({patternsSQL}) )"
-    d4 = f"delete from trips where where space_id={space_id} and pattern_id in ({patternsSQL})"
-    d3Count = dbconnect.execSQL(d3)
-    d4Count = dbconnect.execSQL(d4)
+    d4 = f"delete from trips where space_id={space_id} and pattern_id in ({patternsSQL})"
+    # d3Count = dbconnect.execSQL(d3)
+    # d4Count = dbconnect.execSQL(d4)
     
+    # all execs only, do them together
+    statements = [d1, d2, d3, d4]
+    dCount = dbconnect.execSQL(' ; '.join(statements))
+
     returnD = { 'message': "success", "pattern_stops_deleted": d1Count, "patterns_deleted": d2Count,
         "trips_deleted": d4Count, "stop_times_deleted": d4Count }
     cf.logmessage(returnD)

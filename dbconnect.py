@@ -146,7 +146,11 @@ def execSQL(s1, noprint=False):
     ps_cursor.execute(s1)
     ps_connection.commit()
 
-    affected = ps_cursor.rowcount
+    try:
+        affected = ps_cursor.rowcount
+    except:
+        cf.logmessage("whoops looks like ps_cursor.rowcount didn't work. Ignoring.")
+        affected = 0
     ps_cursor.close()
     threaded_postgreSQL_pool.putconn(ps_connection)
     return affected

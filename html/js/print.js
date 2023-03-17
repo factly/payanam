@@ -7,7 +7,7 @@ const stopIconSize = [20, 20];
 var URLParams = {}; // for holding URL parameters
 var globalRoute = '';
 
-var baseLayer = L.layerGroup(null);
+var baseLayer = L.layerGroup(null, {pane:'tilePane'});
 var stopsLayer = L.geoJson(null);
 var lineLayer = L.geoJson(null);
 
@@ -20,6 +20,7 @@ var globalRoutesList = [];
 var base = {
     "CartoDB Positron": L.tileLayer.provider('CartoDB.Positron'),
     "CartoDB Voyager": L.tileLayer.provider('CartoDB.VoyagerLabelsUnder'),
+    "cartoDB Dark": L.tileLayer.provider('CartoDB.DarkMatter'),
     
     "OpenStreetMap": L.tileLayer.provider('OpenStreetMap.Mapnik'),
     "Esri WorldTopoMap": L.tileLayer.provider('Esri.WorldTopoMap'),
@@ -39,7 +40,7 @@ const defaultBase = "CartoDB Positron";
 var map = new L.Map('map', {
     center: STARTLOCATION,
     zoom: STARTZOOM,
-    layers: [base["CartoDB Positron"]],
+    layers: [],
     scrollWheelZoom: true, maxZoom: 18, zoomControl: false, zoomDelta: 0.1, zoomSnap:0.1
 });
 L.control.scale({position: 'bottomleft'}).addTo(map)
@@ -54,6 +55,36 @@ $(document).ready(function () {
     loadURLParams(URLParams);
     loadRoutesList();
     loadConfig();
+    bgChoices();
+
+    $('.background').on('change', function (e) {
+        console.log(this.value);
+        var destination = this.value; // need to copy this over, as "this.value" doesn't make it to inside the next loop
+        if( ! this.value) return;
+        baseLayer.clearLayers();
+        base[destination].addTo(baseLayer);
+    });
+    base[$('.background').val()].addTo(baseLayer);
+
+    changeDimensions(true);
+
+    // sliders
+    document.getElementById("slider1").oninput = function() {
+        console.log(`baseLayer opacity: ${this.value}`);
+        baseLayer.eachLayer(r => {
+            r.setOpacity(this.value/100);
+        });
+    }
+    
+    document.getElementById("slider2").oninput = function() {
+        $(`.stop-divicon`).css({opacity: this.value/100});
+    }
+
+    document.getElementById("slider3").oninput = function() {
+        lineLayer.eachLayer(r => {
+            r.setStyle({ opacity:this.value/100 });
+        });
+    }
 });
 
 
@@ -211,7 +242,7 @@ function mapPattern(returndata) {
             let tooltipContent = ``;
             let tooltipOptions = {permanent:false, direction:'right', offset:[20,0] };
             let popupContent = ``;
-            var stopmarker = L.marker([p.latitude, p.longitude], { 
+            let stopmarker = L.marker([p.latitude, p.longitude], { 
                 icon: L.divIcon({
                     className: `stop-divicon`,
                     iconSize: stopIconSize,
@@ -227,19 +258,20 @@ function mapPattern(returndata) {
         map.fitBounds(stopsLayer.getBounds(), {padding:[20,20], maxZoom:15});
         drawLine();
         listHTML += `<li>${i+1}. ${p.name}</li>`; // populate stops list
-        $(`.stopsList`).html(listHTML);
-        $('#route_status').html(`Route and pattern loaded`);
+        
     });
+    $(`.stopsList`).html(listHTML);
+    $('#route_status').html(`Route and pattern loaded`);
 }
 
 
 function drawLine(color='black') {
     lineLayer.clearLayers();
-    var polyOptions = { color:color };
+    var polyOptions = { color:color, weight: 2 };
     var poly = L.polyline(globalLineCollector, polyOptions);
     let spacer = Array(3).join(" "); // repeater. from https://stackoverflow.com/a/1877479/4355695
     // putting arrows. See https://github.com/makinacorpus/Leaflet.TextPath
-    poly.setText(spacer+'>'+spacer, {repeat: true, offset: 6, attributes: {'font-weight': 'bold', 'font-size': '18', 'fill':color}}); // ►
+    poly.setText(spacer+'>'+spacer, {repeat: true, offset: 6, attributes: {'font-weight': 'light', 'font-size': '18', 'fill':color}}); // ►
     poly.addTo(lineLayer);
     
 }
@@ -255,6 +287,52 @@ function changeColor() {
     $(`.stop-divicon`).css('color',fontColor);
     // re-do setText for arrows
     drawLine(trackColor);
+}
+
+function changeDimensions(reset=false) {
+    var w = parseInt($(`.width`).val());
+    var h = parseInt($(`.height`).val());
+    var ratio = parseFloat($(`.ratio`).val());
+
+    if(reset) {
+        w = 1000; $(`.width`).val(w);
+        h = 1450; $(`.height`).val(h);
+        ratio = 80; $(`.ratio`).val(ratio);
+    }
+
+    $(`.page`).css('width',`${w}px`);
+    
+    let mapH = parseInt( (h*ratio/100).toFixed(0));
+    let stopsH = h - mapH;
+    $(`.map`).css('height',`${mapH}px`);
+    $(`.stopsPart`).css('height',`${stopsH}px`);
+    console.log(w,h,mapH,stopsH);
+
+    // there, that resizes the map.
+
+    map.invalidateSize();
+    // from https://stackoverflow.com/questions/24412325/resizing-a-leaflet-map-on-container-resize 
+    //Checks if the map container size changed and updates the map if so — call it after you've changed the map size dynamically
+    if(globalLineCollector.length) {
+        map.fitBounds(stopsLayer.getBounds(), {padding:[5,5], maxZoom:17});
+        console.log(stopsLayer.getBounds());
+    }
+}
+
+function zoomFit() {
+    map.fitBounds(stopsLayer.getBounds(), {padding:[5,5], maxZoom:17});
+}
+
+function bgChoices() {
+    var content = '';
+    Object.entries(base).forEach(
+        ([key, value]) => {
+            if( key == defaultBase)
+                content += `<option selected>${key}</option>`;
+            else content += `<option>${key}</option>`;
+        }
+    );
+    $('.background').html(content);
 }
 
 function clearPattern() {

@@ -123,6 +123,7 @@ select.background {
 
 <div id="topMenu"></div>
 <div class="container-fluid">
+
 <div class="row no-print top20">
 <div class="col-md-3">
     <h5><b>Data</b></h5>
@@ -141,14 +142,13 @@ select.background {
 </div>
 <div class="col-md-4">
     <h5><b>Customize the map</b></h5>
-    <p>Change page dimensions: <small>can make it big!</small><br>
-    Width:<input class="width" size="5" value="1000" type="number" min="100" max="100000" step="10">px, 
-    Height:<input class="height" size="5" value="1450" type="number" min="100" max="100000" step="10">px<br>
-    Map part:<input class="ratio" size="5" value="69" type="number" min="20" max="100" step="1">% &nbsp;&nbsp;
+    <p>Change page dimensions: <small>can make it big!</small><br></p>
+    <p>W:<input class="width" size="4" value="1000" type="number" min="100" max="100000" step="10">px, 
+    H:<input class="height" size="4" value="1450" type="number" min="100" max="100000" step="10">px</p>
+    <p>Map part:<input class="ratio" size="5" value="80" type="number" min="20" max="100" step="1">% &nbsp;&nbsp;
     <button onclick="changeDimensions()">Apply</button>
     &nbsp; | &nbsp; 
     <a onclick="changeDimensions(true)" href="javascript:;">Reset</a>
-    <!-- | &nbsp; <span id="tileStatus"></span> -->
     </p>
     <!--Presets: <a>A4</a> | <a>A3</a> | <a>A2</a> | <a>A1</a>-->
     <p>Change background: <select class="background"></select> </p>
@@ -167,27 +167,29 @@ select.background {
 </div>
 <div class="col-md-2">
     <h5><b>Transparency</b></h5>
-    Map Opacity: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider1"></div>
-    Stops Opacity: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider2"></div>
-    Route Opacity: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider3"></div>
+    Map: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider1"></div>
+    Stops: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider2"></div>
+    Route: <div class="slidecontainer"><input type="range" min="1" max="100" value="100" class="slider" id="slider3"></div>
 </div>
 </div>
 
-
-<div class="page dir0">
-<div id="map" class="map nopad"></div>
-<div style="clear: both;"></div>
-<div class="stopsPart">
 <br>
-<small><div class="stopsListContainer">
-<ul class= "stopsList">
-</ul>
-</div></small>
-<br>
-<small><p class="timings"></p></small>
-<small><p class="service"></p></small>
-</div></div>
-
+<div align="center">
+<div class="page">
+    <div id="map" class="map nopad"></div>
+    <div style="clear: both;"></div>
+    <div class="stopsPart">
+        <br>
+        <small><div class="stopsListContainer" align="left">
+            <ul class= "stopsList">
+            </ul>
+        </div></small>
+        <br>
+        <small><p class="timings"></p></small>
+        <small><p class="service"></p></small>
+    </div>
+</div>
+</div>
 <div class="no-print">
 <br><hr><br>
 </div>
