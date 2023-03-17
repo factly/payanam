@@ -238,6 +238,7 @@ function mapPattern(returndata) {
 
     returndata.pattern_stops.forEach((p,i) => {
         if(checklatlng(p.latitude,p.longitude)) {
+            listHTML += `<li>${i+1}. ${p.name}</li>`; // populate stops list
             globalLineCollector.push([p.latitude, p.longitude]);
             let tooltipContent = ``;
             let tooltipOptions = {permanent:false, direction:'right', offset:[20,0] };
@@ -253,13 +254,13 @@ function mapPattern(returndata) {
             stopmarker.properties = p;
             stopmarker.addTo(stopsLayer);
         } else {
+            listHTML += `<li>${i+1}. ${p.name} <small class="unmapped">unmapped</small></li>`; // populate stops list
             unmappedStops.push(p);
         }
-        map.fitBounds(stopsLayer.getBounds(), {padding:[20,20], maxZoom:15});
-        drawLine();
-        listHTML += `<li>${i+1}. ${p.name}</li>`; // populate stops list
         
     });
+    map.fitBounds(stopsLayer.getBounds(), {padding:[20,20], maxZoom:15});
+    drawLine();
     $(`.stopsList`).html(listHTML);
     $('#route_status').html(`Route and pattern loaded`);
 }
