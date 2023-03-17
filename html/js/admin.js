@@ -110,7 +110,7 @@ function saveFuzzySettings() {
     $('#saveFuzzySettings_status').html("Saving..");
     console.log(payload);
     $.ajax({
-        url: `/API/saveConfig`,
+        url: `${APIpath}saveConfig`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -149,7 +149,7 @@ function gtfs_settings_update() {
     $('#gtfs_settings_update_status').html(`Saving GTFS settings..`);
 
     $.ajax({
-        url: `/API/saveConfig`,
+        url: `${APIpath}saveConfig`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -171,7 +171,7 @@ function createGTFS() {
 
     $('#createGTFS_status').html("Starting GTFS...");
     $.ajax({
-        url: `/API/createGTFS`,
+        url: `${APIpath}createGTFS`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -202,7 +202,7 @@ function createGTFS() {
 function fetchGTFSexports() {
     $('#exportsList').html(`Loading..`);
     $.ajax({
-        url: `/API/createGTFS_status`,
+        url: `${APIpath}createGTFS_status`,
         type: "GET",
         //data : JSON.stringify(payload),
         cache: false,

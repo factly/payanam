@@ -95,7 +95,7 @@ function loadRoutesList() {
     $('#route_status').html(`Loading routes...`);
     let payload = {};
     $.ajax({
-        url: `/API/loadRoutesList`,
+        url: `${APIpath}loadRoutesList`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -165,7 +165,7 @@ function loadRouteDetails(route_id, pattern_id=null){
     $('#route_status').html(`Loading route id ${route_id}...`);
     let payload = { route_id: route_id };
     $.ajax({
-        url: `/API/loadRouteDetails`,
+        url: `${APIpath}loadRouteDetails`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -212,7 +212,7 @@ function loadPattern(pid) {
         'pattern_id': pid
     };
     $.ajax({
-        url: `/API/loadPattern`,
+        url: `${APIpath}loadPattern`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,

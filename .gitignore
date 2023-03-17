@@ -5,3 +5,4 @@ working
 output/*.html
 output/gtfs_*
 env*.txt
+payanam_server_launch.sh

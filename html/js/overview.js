@@ -229,7 +229,7 @@ function routesOverview() {
     $('#status').html(`Loading routes...`);
     let payload = {};
     $.ajax({
-        url: `/API/routesOverview`,
+        url: `${APIpath}routesOverview`,
         type: "GET",
         // data : JSON.stringify(payload),
         cache: false,
@@ -266,7 +266,7 @@ function mapRoute(rdata) {
     `);
 
     $.ajax({
-        url: `/API/getRouteShapes`,
+        url: `${APIpath}getRouteShapes`,
         type: "GET",
         data : {route_id: route_id},
         dataType: 'json',

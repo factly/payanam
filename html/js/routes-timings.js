@@ -56,7 +56,7 @@ function loadTimings(pageNum=1) {
     clearTimings(pid);
     
     $.ajax({
-        url: `/API/loadTimings`,
+        url: `${APIpath}loadTimings`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -134,7 +134,7 @@ function addTrip() {
     };
     $('#addTrip_status').html('Adding..');
     $.ajax({
-        url: `/API/addTrip`,
+        url: `${APIpath}addTrip`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -164,7 +164,7 @@ function deleteTrip() {
     };
     $('#deleteTrip_status').html(`Deleting trip..`);
     $.ajax({
-        url: `/API/deleteTrip`,
+        url: `${APIpath}deleteTrip`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -209,7 +209,7 @@ function saveTimings() {
         "edits": edits
     };
     $.ajax({
-        url: `/API/saveTimings`,
+        url: `${APIpath}saveTimings`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,

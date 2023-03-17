@@ -362,7 +362,7 @@ function loadUniqueStops() {
     let payload = {"main":true, "indexed":false, "unique":true};
     $("#stopsTable_status").html(`Loading..`);
     $.ajax({
-        url: `/API/loadStops`,
+        url: `${APIpath}loadStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -620,7 +620,7 @@ function combineStops() {
 
     $('#reconcileStatus').html('Combining Stops...');
     $.ajax({
-        url: `/API/combineStops`,
+        url: `${APIpath}combineStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,

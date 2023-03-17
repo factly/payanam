@@ -206,7 +206,7 @@ function loadStops() {
     let payload = {};
     $("#stopsTable_status").html(`Loading all stops..`);
     $.ajax({
-        url: `/API/loadStops`,
+        url: `${APIpath}loadStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -275,7 +275,7 @@ function addStop() {
     };
     $('#addStop_status').html(`Sending...`);
     $.ajax({
-        url: `/API/addStops`,
+        url: `${APIpath}addStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -318,7 +318,7 @@ function locateStop(id) {
 //     $('#map_id').html(`Loading routes for ${id}`);
 //     $('#trainHolder').html(``);
 //     $.ajax({
-//         url: `/API/trains4stop?stop=${id}`,
+//         url: `${APIpath}trains4stop?stop=${id}`,
 //         type: "GET",
 //         cache: false,
 //         success: function (returndata) {
@@ -443,7 +443,7 @@ function updateStopLocation(id) {
     console.log(payload);
     $('#updateStop_status').html(`Sending...`);
     $.ajax({
-        url: `/API/addStops`,
+        url: `${APIpath}addStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -488,7 +488,7 @@ function setupStopEditing(id, name='') {
     console.log(payload);
 
     $.ajax({
-        url: `/API/diagnoseStops`,
+        url: `${APIpath}diagnoseStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -527,7 +527,7 @@ function deleteStop() {
     console.log(payload);
 
     $.ajax({
-        url: `/API/diagnoseStops`,
+        url: `${APIpath}diagnoseStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
@@ -544,7 +544,7 @@ function deleteStop() {
             if(confirm(question)) {
                 $('#stopsTable_status').html(`Deleting the stop(s), pls wait..`);
                 $.ajax({
-                    url: `/API/deleteStopsConfirm`,
+                    url: `${APIpath}deleteStopsConfirm`,
                     type: "POST",
                     data : JSON.stringify(payload),
                     cache: false,
@@ -611,7 +611,7 @@ function renameStop(id) {
     console.log(payload);
     $('#updateStop_status').html(`Sending...`);
     $.ajax({
-        url: `/API/updateStops`,
+        url: `${APIpath}updateStops`,
         type: "POST",
         data : JSON.stringify(payload),
         cache: false,
